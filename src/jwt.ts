@@ -1,5 +1,6 @@
 import { Static, Type as T, TSchema } from '@sinclair/typebox';
 import jwt from 'jsonwebtoken';
+import { DateTime } from 'luxon';
 import Debug from 'debug';
 
 import { PDeps } from './deps';
@@ -15,12 +16,13 @@ export type Vote = Static<typeof Vote>;
 export const TwitchUser = T.Object({
   login: T.String(),
   user_id: T.String(),
+  followed_on: T.Number(),
 });
 
 export type TwitchUser = Static<typeof TwitchUser>;
 
 export interface JWT {
-  signUser: (data: unknown) => [token: string, expires: Date];
+  signUser: (data: unknown) => [token: string, expires: DateTime];
   verifyUser: (token: string | undefined) => TwitchUser | undefined;
 }
 
@@ -33,10 +35,9 @@ export const initJWT = async ({ secrets }: PDeps<'secrets'>): Promise<JWT> => {
 
   const sign =
     <T extends TSchema>(schema: T) =>
-    (data: unknown): [token: string, expiry: Date] => {
-      const later = new Date();
-      later.setDate(later.getDate() + 7);
-      const exp = later.getTime() / 1000;
+    (data: unknown): [token: string, expiry: DateTime] => {
+      const later = DateTime.utc().plus({ days: 7 });
+      const exp = later.toMillis() / 1000;
       const token = jwt.sign(
         {
           exp,

@@ -1,30 +1,17 @@
-import express, { type Request, type Response, type Router } from 'express';
+import express from 'express';
+import type { Request, RequestHandler, Application } from 'express';
+
+import { nanoid } from 'nanoid';
 import { type PDeps } from '../deps';
 import { type TwitchUser } from '../jwt';
-import { asInt, assertInt, shuffle } from '../util';
-import humanizeDuration from 'humanize-duration';
+import { asInt, assertInt, isEligible, sendError, shd, shuffle } from '../util';
+import { UserVisibleError } from '../errors';
 
-export const initSiteRoutes = ({ poll }: PDeps<'poll'>): Router => {
-  const shd = humanizeDuration.humanizer({
-    // language: 'shortEn',
-    delimiter: ' ',
-    spacer: ' ',
-    units: ['d', 'h', 'm', 's'],
-    round: true,
-    // languages: {
-    //   shortEn: {
-    //     y: () => 'y',
-    //     mo: () => 'mo',
-    //     w: () => 'w',
-    //     d: () => 'd',
-    //     h: () => 'h',
-    //     m: () => 'm',
-    //     s: () => 's',
-    //     ms: () => 'ms',
-    //   },
-    // },
-  });
+export interface SiteFns {
+  mount(app: Application, path: string): void;
+}
 
+export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedirect'>): SiteFns => {
   const router = express.Router();
 
   type Context = {
@@ -44,33 +31,35 @@ export const initSiteRoutes = ({ poll }: PDeps<'poll'>): Router => {
     res.render('hello', context(req));
   });
 
-  router.get('/create', (req, res) => {
+  router.get('/error', (req, res) => {
+    res.render('error', context(req, { error: req.query.msg }));
+  });
+
+  router.get('/create', authRedirect, (req, res) => {
     if (!req.session.admin) {
-      res.redirect('/');
+      sendError(res, 'Access denied');
       return;
     }
     res.render('create', context(req));
   });
 
-  router.get('/poll/:poll_id', async (req, res) => {
+  router.get('/poll/:poll_id', authRedirect, async (req, res) => {
     const poll_id = parseInt(req.params.poll_id);
     if (isNaN(poll_id)) {
-      res.status(400).send('Invalid poll_id');
+      res.redirect('/');
       return;
     }
-    const user_id = req.session.user?.user_id;
-    if (typeof user_id !== 'string') {
-      res.status(403).send('Invalid session');
-      return;
-    }
+    const user = req.session.user!;
 
     try {
-      const vote = await poll.getVote(poll_id, user_id);
-      const diff = vote.closes_on.getTime() - Date.now();
-      const remaining = shd(diff);
+      const vote = await poll.getVote(poll_id, user.user_id);
+      const remaining = shd(vote.closes_on.diffNow().toMillis());
+      const eligible = isEligible(user);
 
-      const ctx = context(req, { vote, remaining });
-      if (!vote.open) {
+      const ctx = context(req, { vote, remaining, eligible_msg: eligible !== true ? eligible[1] : undefined });
+      if (eligible !== true) {
+        res.render('poll-show', ctx);
+      } else if (!vote.open) {
         res.render('poll-results', ctx);
       } else if (vote.ranks.length === 0) {
         vote.options = shuffle(vote.options);
@@ -84,73 +73,85 @@ export const initSiteRoutes = ({ poll }: PDeps<'poll'>): Router => {
     }
   });
 
-  router.post('/vote', async (req, res) => {
+  // check csrf-token and user
+  const validatePost: RequestHandler = (req, res, next) => {
     const sessionToken = req.session.localId;
     const formToken = req.body['csrf-token'];
 
     if (!formToken || !sessionToken || formToken !== sessionToken) {
       console.error('bad csrf token');
-      res.status(400).render('error', context(req, { error: 'Invalid submission' }));
+      sendError(res, 'Invalid submission');
       return;
     }
+    // we've used this token, make a new one
+    req.session.localId = nanoid();
 
     const user = req.session.user;
     if (!user) {
       console.error('no user');
-      res.status(400).render('error', context(req, { error: 'Invalid submission' }));
+      sendError(res, 'Invalid submission');
       return;
     }
+
+    next();
+  };
+
+  router.post('/vote', validatePost, async (req, res) => {
+    const user = req.session.user!;
 
     const poll_id = asInt(req.body.poll_id);
     if (!poll_id) {
       console.error('no poll_id');
-      res.status(400).render('error', context(req, { error: 'Invalid submission' }));
+      sendError(res, 'Invalid submission');
       return;
     }
 
     const ranks = req.body.ranks;
     if (!Array.isArray(ranks) || ranks.length === 0) {
       console.error('no votes specified');
-      res.status(400).render('error', context(req, { error: 'Invalid submission' }));
+      sendError(res, 'You must select at least one option!');
       return;
     }
 
     try {
       const ranks_option_ids = ranks.map(assertInt);
-      await poll.castVote(req.body.poll_id, user.user_id, ranks_option_ids);
+      await poll.castVote(req.body.poll_id, user, ranks_option_ids);
     } catch (e) {
-      console.error('other error', e);
-      res.status(400).render('error', context(req, { error: 'Invalid submission' }));
+      if (e instanceof UserVisibleError) {
+        sendError(res, e.message);
+      } else {
+        console.error('other error', e);
+        sendError(res, '(Server error)');
+      }
       return;
     }
     res.redirect(`/poll/${poll_id}`);
   });
 
-  router.post('/create', (req, res) => {
-    const sessionToken = req.session.localId;
-    const formToken = req.body['csrf-token'];
-
-    if (!formToken || !sessionToken || formToken !== sessionToken) {
-      res.status(400).render('error', context(req, { error: 'Invalid CSRF token' }));
-      return;
-    }
-
+  router.post('/create', validatePost, async (req, res) => {
     if (!req.session.admin) {
-      res.status(400).render('error', context(req, { error: 'Access denied' }));
+      console.error('refusing to create poll: non-admin');
+      sendError(res, 'Access denied');
       return;
     }
 
-    poll
-      .createPoll(req.body)
-      .then(poll_id => {
-        console.log('created', poll_id);
-        res.redirect(`/poll/${poll_id}`);
-      })
-      .catch(err => {
-        console.log('failed', err);
-        res.status(400).send('Create poll failed');
-      });
+    try {
+      const poll_id = await poll.createPoll(req.body);
+      console.log('created', poll_id);
+      res.redirect(`/poll/${poll_id}`);
+    } catch (e) {
+      if (e instanceof UserVisibleError) {
+        sendError(res, e.message);
+      } else {
+        console.log('failed', e);
+        sendError(res, '(Server error)');
+      }
+    }
   });
 
-  return router;
+  return {
+    mount: (app, path) => {
+      app.use(path, router);
+    },
+  };
 };

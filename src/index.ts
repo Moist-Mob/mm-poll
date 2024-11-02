@@ -29,8 +29,10 @@ import { initDb } from './db';
   const app = await initExpress({ config, liquid, JWT });
   const poll = initPoll({ kysely });
 
-  app.use('/auth', await initAuthRoutes({ config, secrets, apiClient, JWT }));
-  app.use('/', initSiteRoutes({ poll }));
+  const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient });
+  mountAuth(app, '/auth');
+  const { mount: mountSite } = initSiteRoutes({ poll, authRedirect });
+  mountSite(app, '/');
 
   const server = createServer(app);
   server.listen(config.port, () => {

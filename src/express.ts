@@ -20,6 +20,9 @@ const admins = Object.assign(Object.create(null), {
 
 declare module 'express-session' {
   interface SessionData {
+    authRedirect?: {
+      returnTo: string;
+    };
     localId: string;
     user?: TwitchUser;
     admin: boolean;
@@ -67,7 +70,8 @@ export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liq
 
     if (user && !Object.prototype.hasOwnProperty.call(req.cookies, 'twitch-user')) {
       const [cookie, expires] = JWT.signUser(user);
-      res.cookie('twitch-user', cookie, { expires });
+      console.log('setting cookie');
+      res.cookie('twitch-user', cookie, { expires: expires.toJSDate() });
     }
 
     next();

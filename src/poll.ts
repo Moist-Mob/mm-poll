@@ -1,7 +1,11 @@
-import { PDeps } from './deps';
 import { Type as T } from '@sinclair/typebox';
-import { asInt, assertInt, assertSchema } from './util';
+import { DateTime } from 'luxon';
+
+import { PDeps } from './deps';
+import { assertSchema, isEligible } from './util';
 import { irv } from './irv';
+import { TwitchUser } from './jwt';
+import { UserVisibleError } from './errors';
 
 const Poll = T.Object({
   title: T.String(),
@@ -26,8 +30,8 @@ export type Poll = {
   poll_id: number;
   title: string;
   options: PollOption[];
-  created_on: Date;
-  closes_on: Date;
+  created_on: DateTime;
+  closes_on: DateTime;
 };
 export type PollVote = Poll &
   (
@@ -44,7 +48,7 @@ export interface PollFns {
   getPoll(poll_id: number): Promise<Poll>;
   getVote(poll_id: number, user_id: string): Promise<PollVote>;
   createPoll(poll_id: number): Promise<number>;
-  castVote(poll_id: number, twitch_user_id: string, ranks: number[]): Promise<void>;
+  castVote(poll_id: number, user: TwitchUser, ranks: number[]): Promise<void>;
 }
 
 export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
@@ -61,8 +65,8 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       .execute();
     return {
       ...poll,
-      created_on: new Date(poll.created_on * 1000),
-      closes_on: new Date(poll.closes_on * 1000),
+      created_on: DateTime.fromSeconds(poll.created_on, { locale: 'utc' }),
+      closes_on: DateTime.fromSeconds(poll.closes_on, { locale: 'utc' }),
       options,
     };
   };
@@ -124,21 +128,27 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       .where('twitch_user_id', '=', user_id)
       .execute();
 
-    if (Date.now() >= poll.closes_on.getTime()) {
+    if (DateTime.utc().toMillis() >= poll.closes_on.toMillis()) {
       return { ...poll, open: false, results: await calcResults(poll_id) };
     }
 
     return { ...poll, open: true, ranks };
   };
 
-  const castVote = async (poll_id: number, twitch_user_id: string, ranks: number[]): Promise<void> => {
+  const castVote = async (poll_id: number, user: TwitchUser, ranks: number[]): Promise<void> => {
+    const eligible = isEligible(user);
+    if (eligible !== true) throw new UserVisibleError(eligible[1]);
+
+    throw new UserVisibleError('testing');
+
+    const twitch_user_id = user.user_id;
     await kysely.transaction().execute(async trx => {
       const { closes_on } = await trx
         .selectFrom('poll')
         .select('closes_on')
         .where('poll_id', '=', poll_id)
         .executeTakeFirstOrThrow();
-      if (Date.now() >= closes_on * 1000) throw new Error('Poll is closed');
+      if (Date.now() >= closes_on * 1000) throw new UserVisibleError('Poll is closed');
 
       trx
         .insertInto('vote')
@@ -162,13 +172,11 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       throw new Error('No options!');
     }
 
-    const now = new Date();
-    const later = new Date(now);
-    later.setDate(later.getDate() + 1);
-    //later.setMinutes(later.getMinutes() + 10);
+    const now = DateTime.utc();
+    const later = now.plus({ days: 1 });
 
-    const created_on = Math.floor(now.getTime() / 1000);
-    const closes_on = Math.floor(later.getTime() / 1000);
+    const created_on = Math.floor(now.toMillis() / 1000);
+    const closes_on = Math.floor(later.toMillis() / 1000);
 
     return await kysely.transaction().execute(async trx => {
       const { poll_id } = await trx

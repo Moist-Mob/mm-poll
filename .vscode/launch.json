@@ -10,7 +10,7 @@
       "request": "launch",
 
       // Debug current file in VSCode
-      "program": "./src/index.ts",
+      "program": "${workspaceRoot}/src/index.ts",
 
       /*
        * Path to tsx binary

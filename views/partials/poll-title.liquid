@@ -1,0 +1,11 @@
+<h1 class="mb-0">{{ title | escape }}</h1>
+<h2 class="mt-0">
+  {% if remaining %}
+    {{ remaining | escape }} remaining
+  {% else %}
+    Final results
+  {% endif %}
+</h2>
+{% if eligible_msg %}
+  <small>{{ eligible_msg | escape }}</small>
+{% endif %}

@@ -2,8 +2,7 @@
 
 {% block content %}
   <div class="flex flex-col min-w-30">
-    <h1 class="mb-0">{{ vote.title | escape }}</h1>
-    <h2 class="mt-0">Final results</h2>
+    {% render "poll-title", title: vote.title, remaining: null %}
     <ul
       id="ranked-votes"
       x-sort

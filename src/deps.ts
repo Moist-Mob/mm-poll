@@ -5,7 +5,8 @@ import { type Config } from './config';
 import { type SecretsFileSource } from './config/secrets';
 import { type JWT } from './jwt';
 import { type Database } from './db/types';
-import { PollFns } from './poll';
+import { type PollFns } from './poll';
+import { type RequestHandler } from 'express';
 
 export type ExpressContext = {
   settings: any;
@@ -27,5 +28,6 @@ export type Deps = {
   sqlite: BetterSqlite3Database;
   kysely: Kysely<Database>;
   poll: PollFns;
+  authRedirect: RequestHandler;
 };
 export type PDeps<Ks extends keyof Deps> = Pick<Deps, Ks>;

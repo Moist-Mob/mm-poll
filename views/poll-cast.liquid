@@ -16,7 +16,9 @@
     action="/vote"
     class="flex flex-col min-w-30"
     x-data>
-    <h1 class="mb-0">{{ vote.title | escape }}</h1>
+    {% render "poll-title"
+      , title: vote.title
+      , remaining: remaining %}
 
     <input
       type="hidden"
@@ -30,7 +32,7 @@
       id="ranked-votes"
       x-sort
       x-sort:group="ranks"
-      class="relative w-full min-h-20 pr-2 bg-orange-800 [&:has(li)_.help]:hidden">
+      class="relative w-full min-h-16 pb-8 pr-2 bg-orange-800 [&:has(li)_.help]:hidden">
       <div class="help absolute inset-0 p-2 text-zinc-300 text-opacity-50 flex items-center">
         <span class="w-fit mx-auto">Drag items here to rank them</span>
       </div>
@@ -38,7 +40,7 @@
     <ul
       x-sort
       x-sort:group="ranks"
-      class="w-30 min-h-20 pr-2 bg-zinc-700 [&_li]:list-none">
+      class="w-30 min-h-16 pr-2 bg-zinc-700 [&_li]:list-none">
       <span class="display:none"></span>
       {% for option in vote.options %}
         <li class="w-full" x-sort:item="{{ option.option_id | escape }}">
@@ -77,6 +79,10 @@
           if (inp === null) continue;
           console.log(i, inp.getAttribute('value'));
           inp.setAttribute('name', `ranks[${i++}]`);
+        }
+        if (i === 0) {
+          ev.preventDefault();
+          alert('Rank at least one option!');
         }
       });
     })();
