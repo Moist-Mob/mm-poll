@@ -1,0 +1,21 @@
+{% layout "default" %}
+
+{% block content %}
+  <div class="flex flex-col min-w-30">
+    <h1 class="mb-0">{{ vote.title | escape }}</h1>
+    <h2 class="mt-0">{{ remaining | escape }} remaining</h2>
+    <ol
+      id="ranked-votes"
+      x-sort
+      x-sort:group="ranks"
+      class="w-full min-h-20 pr-2 bg-orange-800">
+      {% for rank in vote.ranks %}
+        <li class="w-full">
+          <div class="flex flex-row flex-nowrap items-center gap-2">
+            {{ rank.name | escape }}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+{% endblock %}

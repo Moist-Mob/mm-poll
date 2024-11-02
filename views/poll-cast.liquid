@@ -1,0 +1,80 @@
+{% layout "default" %}
+
+{% block footer %}
+  <!-- Alpine Plugins -->
+  <script defer src="//cdn.jsdelivr.net/npm/@alpinejs/sort@3.14.3/dist/cdn.min.js"></script>
+
+  <!-- Alpine Core -->
+  <script defer src="//cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+  <form
+    id="submit-vote"
+    method="post"
+    action="/vote"
+    class="flex flex-col min-w-30"
+    x-data>
+    <button type="submit">Submit</button>
+    <input
+      type="hidden"
+      name="csrf-token"
+      value="{{ localId | escape }}">
+    <input
+      type="hidden"
+      name="poll_id"
+      value="{{ vote.poll_id | escape }}">
+    <ol
+      id="ranked-votes"
+      x-sort
+      x-sort:group="ranks"
+      class="w-full min-h-20 pr-2 bg-orange-800">
+      <span class="display:none"></span>
+    </ol>
+    <ul
+      x-sort
+      x-sort:group="ranks"
+      class="w-30 min-h-20 pr-2 bg-zinc-700 [&_li]:list-none">
+      <span class="display:none"></span>
+      {% for option in vote.options %}
+        <li class="w-full" x-sort:item="{{ option.option_id | escape }}">
+          <div class="flex flex-row flex-nowrap items-center gap-2">
+            <input
+              class="ranked-option"
+              type="hidden"
+              name="test[]"
+              value="{{ option.option_id | escape }}">
+            <span>{{ option.name | escape }}</span>
+            <div class="w-6 h-6 ml-auto self-start hover:cursor-move" x-sort:handle>
+<!-- esthetic-ignore-next -->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+            </div>
+
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </form>
+  <script type="text/javascript">
+      {% raw %}
+    (function () {
+      'use strict';
+      // i'm not _certain_ that the form keys will be ordered in DOM order,
+      // so this little handler guarantees it by renaming them all
+      const rankedVotes = document.getElementById('ranked-votes');
+      document.getElementById('submit-vote').addEventListener('submit', (ev) => {
+        let i = 0;
+        for (let element = rankedVotes.firstElementChild; element !== null; element = element.nextElementSibling) {
+          const inp = element.querySelector('input.ranked-option')
+          if (inp === null) continue;
+          console.log(i, inp.getAttribute('value'));
+          inp.setAttribute('name', `ranks[${i++}]`);
+        }
+      });
+    })();
+      {% endraw %}
+  </script>
+{% endblock %}

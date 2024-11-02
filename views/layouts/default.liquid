@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/favicon-32x32.png">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/favicon-16x16.png">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>{{ title | escape }}</title>
+  </head>
+  <body class="bg-sky-900 text-zinc-300">
+    <div class="flex flex-col">
+      <nav>
+        {% render "navbar"
+          , user: user
+          , admin: admin %}
+      </nav>
+      <div class="content p-4 prose prose-zinc prose-invert">
+        {% block content %}
+        {% endblock %}
+      </div>
+    </div>
+    {% block footer %}
+    {% endblock %}
+  </body>
+</html>

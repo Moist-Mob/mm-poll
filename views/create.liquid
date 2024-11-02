@@ -1,0 +1,91 @@
+{% layout "default" %}
+
+{% block footer %}
+  <script defer src="//cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <h1 class="text-lg">New poll</h1>
+  {% raw %}
+    <script type="text/javascript">
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('optionForm', () => ({
+          focused: 0,
+          options: [{value: ''}],
+          add() {
+            const len = this.options.length;
+            this.options.push({value: ''});
+            this.focused = len;
+          },
+          remove(idx) {
+            this.options.splice(idx, 1);
+            if (this.options.length === 0) {
+              this.add();
+            } else if (this.focused === this.options.length) {
+              this.focused--;
+            }
+          },
+          maybeFocus(idx) {
+            if (
+              this.focused === idx &&
+              document.activeElement?.classList.contains('option-item')
+            ) {
+              this.$el.focus();
+            }
+            return "1";
+          },
+        }));
+      });
+    </script>
+  {% endraw %}
+  <form
+    id="option-form"
+    class="max-w-md flex flex-col gap-4"
+    method="post"
+    action="/create"
+    x-data="optionForm">
+    <input
+      type="hidden"
+      name="csrf-token"
+      value="{{ localId | escape }}">
+    <div class="flex flex-row gap-2 pl-3">
+      <input
+        id="title"
+        name="title"
+        class="w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        autofocus
+        tabindex="1"
+        type="text"
+        placeholder="Title">
+      <div class="min-w-6 h-6 py-2"></div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <template x-for="(option, idx) in options" :key="idx">
+        <div class="poll-option flex flex-row gap-2 pl-3">
+          <input
+            class="option-item w-full shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            type="text"
+            name="option[]"
+            placeholder="Option"
+            x-model="option.value"
+            :tabindex="maybeFocus(idx)"
+            @keydown.enter.stop.prevent="add">
+          <button
+            class="hover:text-zinc-100 focus:outline-none focus:text-orange-400 w-6 h-6 py-2"
+            tabindex="3"
+            @click.prevent="remove(idx)">
+<!-- esthetic-ignore-next -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+              <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+            </svg>
+          </button>
+
+        </div>
+      </template>
+    </div>
+    <button
+      class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:bg-orange-400"
+      tabindex="2"
+      type="submit">Create</button>
+  </form>
+{% endblock %}
