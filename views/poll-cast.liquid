@@ -30,8 +30,10 @@
       id="ranked-votes"
       x-sort
       x-sort:group="ranks"
-      class="w-full min-h-20 pr-2 bg-orange-800">
-      <span class="display:none"></span>
+      class="relative w-full min-h-20 pr-2 bg-orange-800 [&:has(li)_.help]:hidden">
+      <div class="help absolute inset-0 p-2 text-zinc-300 text-opacity-50 flex items-center">
+        <span class="w-fit mx-auto">Drag items here to rank them</span>
+      </div>
     </ol>
     <ul
       x-sort
