@@ -21,13 +21,21 @@ const Config = T.Object({
 const HOP = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
 const noTrailingSlash = (str: string) => (str.endsWith('/') ? str.slice(0, -1) : str);
 
-export const initConfig = async (): Promise<Config> => {
+const getOrigin = (): string => {
+  const port = process.env.port ?? '3000';
   const origin = new URL(process.env.baseUrl ?? 'http://localhost');
-  origin.port = process.env.port ?? '3000';
+  if (!process.env.port) {
+    origin.port = port;
+  }
+  return origin;
+}
+
+export const initConfig = async (): Promise<Config> => {
+  const origin = getOrigin();
   const env = process.env.env ?? 'Dev';
 
   const config: Config = {
-    port: parseInt(origin.port, 10),
+    port: parseInt(process.env.port ?? '3000', 10),
     title: process.env.title ?? 'Vote',
     origin: noTrailingSlash(origin.toString()),
     env: HOP(Env, env) ? (Env as any)[env] : Env.Dev,
