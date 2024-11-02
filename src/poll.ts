@@ -138,7 +138,7 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
         .select('closes_on')
         .where('poll_id', '=', poll_id)
         .executeTakeFirstOrThrow();
-      if (Date.now() >= closes_on) throw new Error('Poll is closed');
+      if (Date.now() >= closes_on * 1000) throw new Error('Poll is closed');
 
       trx
         .insertInto('vote')
@@ -164,8 +164,8 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
 
     const now = new Date();
     const later = new Date(now);
-    // later.setDate(later.getDate() + 1);
-    later.setMinutes(later.getMinutes() + 10);
+    later.setDate(later.getDate() + 1);
+    //later.setMinutes(later.getMinutes() + 10);
 
     const created_on = Math.floor(now.getTime() / 1000);
     const closes_on = Math.floor(later.getTime() / 1000);
