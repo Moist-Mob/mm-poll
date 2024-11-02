@@ -34,7 +34,7 @@ import { initDb } from './db';
 
   const server = createServer(app);
   server.listen(config.port, () => {
-    console.log('listening on port', config.port);
+    console.log('listening on port', config.port, 'origin', config.origin);
   });
   server.on('error', err => {
     console.error(err);
