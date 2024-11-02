@@ -68,7 +68,9 @@ export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liq
     req.session.user = user;
     req.session.admin = user && user.user_id in admins;
 
-    if (user && !Object.prototype.hasOwnProperty.call(req.cookies, 'twitch-user')) {
+    if (!user) {
+      res.clearCookie('twitch-user');
+    } else if (!Object.prototype.hasOwnProperty.call(req.cookies, 'twitch-user')) {
       const [cookie, expires] = JWT.signUser(user);
       console.log('setting cookie');
       res.cookie('twitch-user', cookie, { expires: expires.toJSDate() });
