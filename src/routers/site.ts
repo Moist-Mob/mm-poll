@@ -89,24 +89,28 @@ export const initSiteRoutes = ({ poll }: PDeps<'poll'>): Router => {
     const formToken = req.body['csrf-token'];
 
     if (!formToken || !sessionToken || formToken !== sessionToken) {
+      console.error('bad csrf token');
       res.status(400).render('error', context(req, { error: 'Invalid submission' }));
       return;
     }
 
     const user = req.session.user;
     if (!user) {
+      console.error('no user');
       res.status(400).render('error', context(req, { error: 'Invalid submission' }));
       return;
     }
 
     const poll_id = asInt(req.body.poll_id);
     if (!poll_id) {
+      console.error('no poll_id');
       res.status(400).render('error', context(req, { error: 'Invalid submission' }));
       return;
     }
 
     const ranks = req.body.ranks;
     if (!Array.isArray(ranks) || ranks.length === 0) {
+      console.error('no votes specified');
       res.status(400).render('error', context(req, { error: 'Invalid submission' }));
       return;
     }
@@ -115,6 +119,7 @@ export const initSiteRoutes = ({ poll }: PDeps<'poll'>): Router => {
       const ranks_option_ids = ranks.map(assertInt);
       await poll.castVote(req.body.poll_id, user.user_id, ranks_option_ids);
     } catch (e) {
+      console.error('other error', e);
       res.status(400).render('error', context(req, { error: 'Invalid submission' }));
       return;
     }
