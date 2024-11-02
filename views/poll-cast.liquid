@@ -16,7 +16,8 @@
     action="/vote"
     class="flex flex-col min-w-30"
     x-data>
-    <button type="submit">Submit</button>
+    <h1 class="mb-0">{{ vote.title | escape }}</h1>
+
     <input
       type="hidden"
       name="csrf-token"
@@ -57,6 +58,8 @@
         </li>
       {% endfor %}
     </ul>
+    <button class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:bg-orange-400" type="submit">Submit</button>
+
   </form>
   <script type="text/javascript">
       {% raw %}
