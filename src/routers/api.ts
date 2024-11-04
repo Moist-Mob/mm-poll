@@ -18,7 +18,12 @@ export const initApiRoutes = ({ poll }: PDeps<'poll'>): ApiFns => {
       return;
     }
 
-    res.json(await poll.getResults(poll_id));
+    try {
+      const results = await poll.getResults(poll_id);
+      res.json(results);
+    } catch (e) {
+      res.status(404).json({ error: 'not found' });
+    }
   });
 
   return {
