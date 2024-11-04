@@ -5,6 +5,13 @@ import humanizeDuration from 'humanize-duration';
 
 import type { TwitchUser } from './jwt';
 
+export const DunkOrSlam_uid = '241636';
+
+export const admins = Object.assign(Object.create(null), {
+  '241636': true, // dunkorslam
+  '25022069': true, // myndzi
+});
+
 export const assertSchema = <T extends TSchema>(schema: T, data: unknown): Static<T> => {
   if (Value.Check(schema, data)) return data;
   const errs: string = [...Value.Errors(schema, data)].map(e => `${e.path}: ${e.message}`).join('\n');
@@ -73,6 +80,7 @@ export const shd = humanizeDuration.humanizer({
 export type Eligibility = true | [ms_to_wait: number, human_msg: string];
 
 export const isEligible = (user: TwitchUser): Eligibility => {
+  if (user.user_id in admins) return true;
   const followed_on = user.followed_on < 0 ? -Infinity : Date.now() - user.followed_on;
   const eligible_on = followed_on + 86400_000 * 7;
   const diff = Date.now() - eligible_on;

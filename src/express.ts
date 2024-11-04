@@ -12,11 +12,7 @@ import { Env } from './config';
 import { ExpressContext, PDeps } from './deps';
 import { TwitchUser } from './jwt';
 import { nanoid } from 'nanoid';
-
-const admins = Object.assign(Object.create(null), {
-  '241636': true,
-  '25022069': true,
-});
+import { admins } from './util';
 
 declare module 'express-session' {
   interface SessionData {

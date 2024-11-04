@@ -139,8 +139,6 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     const eligible = isEligible(user);
     if (eligible !== true) throw new UserVisibleError(eligible[1]);
 
-    throw new UserVisibleError('testing');
-
     const twitch_user_id = user.user_id;
     await kysely.transaction().execute(async trx => {
       const { closes_on } = await trx

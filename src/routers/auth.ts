@@ -1,14 +1,13 @@
 import type { Request as ExpressRequest, RequestHandler, Application } from 'express';
 import express from 'express';
 import { nanoid } from 'nanoid';
-import { DateTime } from 'luxon';
 import { LRUCache } from 'lru-cache';
 
 import Debug from 'debug';
 
 import { PDeps } from '../deps';
 import { TwitchUser } from '../jwt';
-import { assertSchema, sendError } from '../util';
+import { assertSchema, DunkOrSlam_uid, sendError } from '../util';
 
 const stateCache = new LRUCache({
   max: 1000,
@@ -64,8 +63,6 @@ export const initAuthRoutes = async ({
       next('impossiburu');
     }
   };
-
-  const DunkOrSlam_uid = '241636';
 
   const fetchTwitchUser = async (req: ExpressRequest, code: string): Promise<TwitchUser> => {
     const url = new URL('https://id.twitch.tv/oauth2/token');

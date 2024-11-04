@@ -57,11 +57,9 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       const eligible = isEligible(user);
 
       const ctx = context(req, { vote, remaining, eligible_msg: eligible !== true ? eligible[1] : undefined });
-      if (eligible !== true) {
-        res.render('poll-show', ctx);
-      } else if (!vote.open) {
+      if (!vote.open) {
         res.render('poll-results', ctx);
-      } else if (vote.ranks.length === 0) {
+      } else if (eligible === true && vote.ranks.length === 0) {
         vote.options = shuffle(vote.options);
         res.render('poll-cast', ctx);
       } else {

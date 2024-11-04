@@ -27,8 +27,8 @@ const getOrigin = (): string => {
   if (!process.env.port) {
     origin.port = port;
   }
-  return origin;
-}
+  return origin.toString();
+};
 
 export const initConfig = async (): Promise<Config> => {
   const origin = getOrigin();
