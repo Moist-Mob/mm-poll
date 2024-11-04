@@ -26,6 +26,11 @@ export type PollUserVote = {
   rank: number;
   name: string;
 };
+export type PollAnonymizedVote = {
+  voter_id: number;
+  option_id: number;
+  rank: number;
+};
 export type Poll = {
   poll_id: number;
   title: string;
@@ -44,9 +49,12 @@ export type PollVote = Poll &
         results: PollResult[];
       }
   );
+export type PollResults = Poll & { votes: PollAnonymizedVote[] };
+
 export interface PollFns {
   getPoll(poll_id: number): Promise<Poll>;
   getVote(poll_id: number, user_id: string): Promise<PollVote>;
+  getResults(poll_id: number): Promise<PollResults>;
   createPoll(poll_id: number): Promise<number>;
   castVote(poll_id: number, user: TwitchUser, ranks: number[]): Promise<void>;
 }
@@ -111,6 +119,35 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     const results = pollResults.get(poll_id) ?? runoff(poll_id);
     pollResults.set(poll_id, results);
     return results;
+  };
+
+  const getResults = async (poll_id: number): Promise<PollResults> => {
+    const poll = await getPoll(poll_id);
+
+    let anon_id = 0;
+    const voterMap = new Map<string, number>();
+    const anon = (twitch_user_id: string): number => {
+      const anonId = voterMap.get(twitch_user_id);
+      if (anonId !== undefined) return anonId;
+      voterMap.set(twitch_user_id, anon_id);
+      return anon_id++;
+    };
+
+    const votes = (
+      await kysely
+        .selectFrom('vote')
+        .select(['option_id', 'twitch_user_id', 'vote_rank as rank'])
+        .where('poll_id', '=', poll_id)
+        .execute()
+    ).map(
+      ({ option_id, rank, twitch_user_id }): PollAnonymizedVote => ({
+        option_id,
+        rank,
+        voter_id: anon(twitch_user_id),
+      })
+    );
+
+    return { ...poll, votes };
   };
 
   const getVote = async (poll_id: number, user_id: string): Promise<PollVote> => {
@@ -195,5 +232,5 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       return poll_id;
     });
   };
-  return { createPoll, getPoll, getVote, castVote };
+  return { createPoll, getPoll, getResults, getVote, castVote };
 };

@@ -11,6 +11,7 @@ import { initTwurple } from './twurple';
 import { initJWT } from './jwt';
 import { initPoll } from './poll';
 import { initDb } from './db';
+import { initApiRoutes } from './routers/api';
 
 (async () => {
   const dbfile = resolve(import.meta.dirname, '..', 'db.sqlite');
@@ -31,6 +32,10 @@ import { initDb } from './db';
 
   const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient });
   mountAuth(app, '/auth');
+
+  const { mount: mountApi } = initApiRoutes({ poll });
+  mountApi(app, '/api');
+
   const { mount: mountSite } = initSiteRoutes({ poll, authRedirect });
   mountSite(app, '/');
 
