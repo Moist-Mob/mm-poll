@@ -3,13 +3,12 @@
 {% block content %}
   <div class="flex flex-col min-w-30">
     {% render "poll-title", title: vote.title, remaining: null %}
+    <p>The poll is ended. Here are the final results.</p>
     <ul
       id="ranked-votes"
-      x-sort
-      x-sort:group="ranks"
-      class="list-none px-0 w-full min-h-20 bg-orange-800">
+      class="list-none px-6 py-4 my-0 w-full min-h-20 text-zinc-200 bg-sky-700 rounded-xl">
       {% for result in vote.results %}
-        <li class="px-2 w-full [&:first-child]:pb-4 [&:first-child]:font-bold [&:first-child]:text-xl [&:first-child]:border-b-2 border-zinc-300">
+        <li class="py-1 my-0 w-full [&:first-child]:pb-4 [&:first-child]:font-bold [&:first-child]:text-xl [&:first-child]:border-b-4 border-sky-900">
           <div class="flex flex-row flex-nowrap items-center gap-2">
             <span>{{ result.name | escape }}</span>
             <span class="ml-auto text-sm font-regular">(avg rank: {{ result.average_rank | round: 2 }})</span>

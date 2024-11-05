@@ -1,11 +1,13 @@
-<h1 class="mb-0">{{ title | escape }}</h1>
-<h2 class="mt-0">
-  {% if remaining %}
-    {{ remaining | escape }} remaining
-  {% else %}
+<h1 class="mb-2">{{ title | escape }}</h1>
+{% if remaining %}
+  <h2 class="mt-4 mb-4 text-base">
+    Time remaining: {{ remaining | escape }}
+  </h2>
+{% else %}
+  <h2 class="mt-4 mb-4">
     Final results
-  {% endif %}
-</h2>
+  </h2>
+{% endif %}
 {% if eligible_msg %}
   <small>{{ eligible_msg | escape }}</small>
 {% endif %}

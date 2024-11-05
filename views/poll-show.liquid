@@ -6,13 +6,10 @@
       , title: vote.title
       , remaining: remaining
       , eligible_msg: eligible_msg %}
-    <ol
-      id="ranked-votes"
-      x-sort
-      x-sort:group="ranks"
-      class="w-full min-h-20 pr-2 bg-orange-800">
+    <p>The poll is ongoing, but you've already voted. Here's how you voted:</p>
+    <ol id="ranked-votes" class="relative mb-4 my-0 py-4 pl-10 w-30 text-zinc-200 bg-sky-700 rounded-xl [&:has(li)_.help]:hidden [&_li]:hover:!bg-transparent [&_li]:pl-2 [&_li]:m-0">
       {% for rank in vote.ranks %}
-        <li class="w-full">
+        <li class="py-1 w-full">
           <div class="flex flex-row flex-nowrap items-center gap-2">
             {{ rank.name | escape }}
           </div>

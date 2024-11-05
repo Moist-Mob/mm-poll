@@ -61,7 +61,7 @@ export const shd = humanizeDuration.humanizer({
   // language: 'shortEn',
   delimiter: ' ',
   spacer: ' ',
-  units: ['d', 'h', 'm', 's'],
+  units: ['d', 'h', 'm'],
   round: true,
   // languages: {
   //   shortEn: {

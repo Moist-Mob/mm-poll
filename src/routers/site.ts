@@ -40,7 +40,7 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       sendError(res, 'Access denied');
       return;
     }
-    res.render('create', context(req));
+    res.render('poll-create', context(req));
   });
 
   router.get('/poll/:poll_id', authRedirect, async (req, res) => {
