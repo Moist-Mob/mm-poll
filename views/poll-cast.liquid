@@ -3,18 +3,15 @@
 {% block footer %}
   <!-- Alpine Plugins -->
   <script defer src="//cdn.jsdelivr.net/npm/@alpinejs/sort@3.14.3/dist/cdn.min.js"></script>
-
-  <!-- Alpine Core -->
-  <script defer src="//cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
 {% endblock %}
 
 {% block content %}
 
   {% render "poll-title"
-    , title: vote.title
+    , title: poll.title
     , remaining: remaining %}
 
-  <p>Arrange options in order of preference (most preferred first, least preferred last). You must select at least one option, but you don't have to select every option.</p>
+  <p>Arrange options in order of preference (most-preferred first, least-preferred last). You must select at least one option, but you don't have to select every option.</p>
 
   <form
     id="submit-vote"
@@ -29,7 +26,7 @@
     <input
       type="hidden"
       name="poll_id"
-      value="{{ vote.poll_id | escape }}">
+      value="{{ poll.poll_id | escape }}">
     <ol
       id="ranked-votes"
       x-sort
@@ -44,7 +41,7 @@
       x-sort
       x-sort:group="ranks"
       class="relative my-0 pl-0 py-4 w-30 min-h-16 w-full bg-zinc-900 bg-opacity-50 rounded-xl [&_li]:list-none divide-opacity-15 divide-solid divide-y divide-zinc-100 [&:has(li)_.help]:hidden">
-      {% for option in vote.options %}
+      {% for option in poll.options %}
         <li class="px-6 py-1 my-0 w-full hover:cursor-move hover:bg-zinc-100 hover:bg-opacity-25" x-sort:item="{{ option.option_id | escape }}">
           <div class="flex flex-row flex-nowrap items-center">
             <input

@@ -1,20 +1,58 @@
 {% layout "default" %}
 
 {% block content %}
-  <div class="flex flex-col min-w-30">
-    {% render "poll-title", title: vote.title, remaining: null %}
+  <style>
+    #results li:first-child::marker {
+      width: 1.5rem;
+      height: 1.5rem;
+      content: '🏆';
+    }
+    #results li:nth-child(2)::marker {
+      width: 1.5rem;
+      height: 1.5rem;
+      content: '🥈';
+    }
+    #results li:nth-child(3)::marker {
+      width: 1.5rem;
+      height: 1.5rem;
+      content: '🥉';
+    }
+  </style>
+  <div class="flex flex-col min-w-30 w-full">
+    {% render "poll-title"
+      , title: poll.title
+      , remaining: null %}
     <p>The poll is ended. Here are the final results.</p>
-    <ul
-      id="ranked-votes"
-      class="list-none px-6 py-4 my-0 w-full min-h-20 text-zinc-200 bg-sky-700 rounded-xl">
-      {% for result in vote.results %}
-        <li class="py-1 my-0 w-full [&:first-child]:pb-4 [&:first-child]:font-bold [&:first-child]:text-xl [&:first-child]:border-b-4 border-sky-900">
+
+
+    <ol id="results" class="pl-10 px-6 py-4 my-0 w-full text-zinc-200 bg-sky-700 rounded-xl [&>li:first-child]:text-2xl [&>li:nth-child(2)]:text-xl [&>li:nth-child(3)]:text-lg">
+      <li class="py-1 my-0 w-full border-sky-900">
+        <div class="flex flex-row flex-nowrap items-center gap-2">
+          <span>{{ results.winner.name | escape }}</span>
+          <span class="ml-auto text-sm font-regular">(votes: {{ results.winner.votes | escape }})</span>
+        </div>
+      </li>
+      {% for entry in results.final_round %}
+        <li class="py-1 my-0 w-full border-sky-900">
           <div class="flex flex-row flex-nowrap items-center gap-2">
-            <span>{{ result.name | escape }}</span>
-            <span class="ml-auto text-sm font-regular">(avg rank: {{ result.average_rank | round: 2 }})</span>
+            <span>{{ entry.name | escape }}</span>
+            <span class="ml-auto text-sm font-regular">(votes: {{ entry.votes | escape }})</span>
           </div>
         </li>
       {% endfor %}
+      {% if results.eliminations.length > 0 %}
+        <hr class="-ml-4 my-2 border-zinc-50 border-opacity-25">
+      {% endif %}
+      {% for entry in results.eliminations %}
+        <li class="py-1 my-0 w-full border-sky-900">
+          <div class="flex flex-row flex-nowrap items-center gap-2">
+            <span>{{ entry.name | escape }}</span>
+            <span class="ml-auto text-sm font-regular">(votes: {{ entry.votes | escape }})</span>
+          </div>
+        </li>
+      {% endfor %}
+      <div class="-ml-5 my-2">Total participants: {{ results.total_voters | escape }}</div>
     </ol>
   </div>
-{% endblock %}
+  <small class="inline-block mt-4">Ties are broken by the original order of the options (topmost wins). Options below the line (if any) were removed in elimination rounds. The vote count for an elimination is the number of votes that option had when it was eliminated. Total participants may be less than the sum of votes in the final round if a user did not vote for any of the options present in the final round.</small>
+</div>{% endblock %}

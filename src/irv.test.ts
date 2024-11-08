@@ -1,21 +1,28 @@
 import { describe, expect, it } from '@jest/globals';
-import { irv, RankedVote } from './irv';
+import { irv } from './irv';
+import { PollOption, PollRawRank } from './poll';
 
 describe('irv', () => {
   const A = 1;
   const B = 2;
   const C = 3;
 
-  const ballot = (twitch_user_id: string, ...votes: number[]): RankedVote[] =>
-    votes.map((option_id, vote_rank) => ({
+  const options: PollOption[] = [
+    { name: 'A', option_id: A },
+    { name: 'B', option_id: B },
+    { name: 'C', option_id: C },
+  ];
+
+  const ballot = (twitch_user_id: string, ...votes: number[]): PollRawRank[] =>
+    votes.map((option_id, rank) => ({
       twitch_user_id,
       option_id,
-      vote_rank,
+      rank,
     }));
 
   it('immediate win', () => {
     // A > B > C (5 votes), B > A > C (3 votes), C > A > B (2 votes)
-    const votes: RankedVote[] = [
+    const votes: PollRawRank[] = [
       ...ballot('1', A, B, C),
       ...ballot('2', A, B, C),
       ...ballot('3', A, B, C),
@@ -29,12 +36,12 @@ describe('irv', () => {
       ...ballot('9', C, A, B),
       ...ballot('10', C, A, B),
     ];
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 
   it('elimination 1', () => {
     // A > B > C (4 votes), B > C > A (3 votes), C > A > B (3 votes)
-    const votes: RankedVote[] = [
+    const votes: PollRawRank[] = [
       ...ballot('1', A, B, C),
       ...ballot('2', A, B, C),
       ...ballot('3', A, B, C),
@@ -50,12 +57,12 @@ describe('irv', () => {
     ];
     // C gets removed (tie breaker - streamer order)
     // A wins over B
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 
   it('elimination 2', () => {
     // A > B > C (4 votes), B > C > A (3 votes), C > A > B (3 votes)
-    const votes: RankedVote[] = [
+    const votes: PollRawRank[] = [
       ...ballot('1', A, B, C),
       ...ballot('2', A, B, C),
       ...ballot('3', A, B, C),
@@ -71,12 +78,12 @@ describe('irv', () => {
     ];
     // C gets removed (tie breaker - streamer order)
     // B wins over A
-    expect(irv(votes)).toEqual(B);
+    expect(irv(votes, options).winner.option_id).toEqual(B);
   });
 
   it('tie 1', () => {
     //  A > B (4 votes), B > A (4 votes), C > A (2 votes)
-    const votes: RankedVote[] = [
+    const votes: PollRawRank[] = [
       ...ballot('1', A, B),
       ...ballot('2', A, B),
       ...ballot('3', A, B),
@@ -92,32 +99,36 @@ describe('irv', () => {
     ];
     // C gets removed (fewest votes)
     // A wins over B (streamer order)
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 
   it('tie 2', () => {
     // circular
-    const votes: RankedVote[] = [...ballot('1', A, B, C), ...ballot('2', B, C, A), ...ballot('3', C, A, B)];
+    const votes: PollRawRank[] = [...ballot('1', A, B, C), ...ballot('2', B, C, A), ...ballot('3', C, A, B)];
     // C gets removed (streamer order)
     // B gets removed (streamer order)
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 
   it('no votes', () => {
-    expect(() => {
-      irv([]);
-    }).toThrow('No ranks present');
+    const res = irv([], options);
+    expect(res.winner.option_id).toEqual(-1);
+    expect(res.final_round).toEqual([
+      { name: 'A', option_id: A, votes: 0 },
+      { name: 'B', option_id: B, votes: 0 },
+      { name: 'C', option_id: C, votes: 0 },
+    ]);
   });
 
   it('only one option chosen', () => {
-    const votes: RankedVote[] = [...ballot('1', A), ...ballot('2', A), ...ballot('3', A)];
+    const votes: PollRawRank[] = [...ballot('1', A), ...ballot('2', A), ...ballot('3', A)];
     // C gets removed (fewest votes)
     // A wins over B (streamer order)
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 
   it('short vote removed', () => {
-    const votes: RankedVote[] = [
+    const votes: PollRawRank[] = [
       //
       ...ballot('1', A, C, B),
       ...ballot('2', C, A, B),
@@ -129,6 +140,6 @@ describe('irv', () => {
     // user '3' entered no more preferences and is removed
     // // remainder is tied between A and C - A wins (streamer order)
     // remainder is tied - A wins (streamer order)
-    expect(irv(votes)).toEqual(A);
+    expect(irv(votes, options).winner.option_id).toEqual(A);
   });
 });

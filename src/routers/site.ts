@@ -43,6 +43,18 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
     res.render('poll-create', context(req));
   });
 
+  router.get('/poll/:poll_id/results', async (req, res) => {
+    const poll_id = parseInt(req.params.poll_id);
+    if (isNaN(poll_id)) {
+      res.redirect('/');
+      return;
+    }
+    const rawResults = await poll.getResults(poll_id);
+    const ctx = context(req, rawResults);
+
+    res.render('poll-results', ctx);
+  });
+
   router.get('/poll/:poll_id', authRedirect, async (req, res) => {
     const poll_id = parseInt(req.params.poll_id);
     if (isNaN(poll_id)) {
@@ -50,20 +62,23 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       return;
     }
     const user = req.session.user!;
-
+    const eligible = isEligible(user);
     try {
-      const vote = await poll.getVote(poll_id, user.user_id);
-      const remaining = shd(vote.closes_on.diffNow().toMillis());
-      const eligible = isEligible(user);
+      const poll_ = await poll.getPoll(poll_id);
+      const remaining = shd(poll_.closes_on.diffNow().toMillis());
 
-      const ctx = context(req, { vote, remaining, eligible_msg: eligible !== true ? eligible[1] : undefined });
+      if (eligible !== true) {
+        res.render('poll-show', context(req, { remaining, eligible_msg: eligible[1]! }));
+        return;
+      }
+
+      const vote = await poll.getVote(poll_, user.user_id);
       if (!vote.open) {
-        res.render('poll-results', ctx);
-      } else if (eligible === true && vote.ranks.length === 0) {
-        vote.options = shuffle(vote.options);
-        res.render('poll-cast', ctx);
+        res.redirect(`/poll/${poll_id}/results`);
+      } else if (vote.ranks.length > 1) {
+        res.render('poll-show', context(req, { remaining, poll: poll_, vote }));
       } else {
-        res.render('poll-show', ctx);
+        res.render('poll-cast', context(req, { remaining, poll: poll_, vote }));
       }
     } catch (e) {
       console.error(e);

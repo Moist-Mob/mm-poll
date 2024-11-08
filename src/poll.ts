@@ -3,24 +3,32 @@ import { DateTime } from 'luxon';
 
 import { PDeps } from './deps';
 import { assertSchema, isEligible } from './util';
-import { irv } from './irv';
+import { irv, IRVResult } from './irv';
 import { TwitchUser } from './jwt';
 import { UserVisibleError } from './errors';
+import { nanoid } from 'nanoid';
+
+type RandId = string & { __brand: 'randid' };
+const randId = () => nanoid(8) as RandId;
 
 const Poll = T.Object({
   title: T.String(),
   option: T.Array(T.String()),
 });
 
+export type PollRawRank = {
+  twitch_user_id: string;
+  option_id: number;
+  rank: number;
+};
+export type PollAnonymizedRank = {
+  id: RandId;
+  option_id: number;
+  rank: number;
+};
 export type PollOption = {
   option_id: number;
   name: string;
-};
-export type PollResult = {
-  option_id: number;
-  name: string;
-  average_rank: number;
-  user_rank?: number;
 };
 export type PollUserVote = {
   rank: number;
@@ -38,23 +46,18 @@ export type Poll = {
   created_on: DateTime;
   closes_on: DateTime;
 };
-export type PollVote = Poll &
-  (
-    | {
-        open: true;
-        ranks: PollUserVote[];
-      }
-    | {
-        open: false;
-        results: PollResult[];
-      }
-  );
+export type PollVote = { open: boolean; ranks: PollUserVote[] };
 export type PollResults = Poll & { votes: PollAnonymizedVote[] };
+export type PollResult = {
+  poll: Poll;
+  results: IRVResult;
+};
 
 export interface PollFns {
   getPoll(poll_id: number): Promise<Poll>;
-  getVote(poll_id: number, user_id: string): Promise<PollVote>;
-  getResults(poll_id: number): Promise<PollResults>;
+  getVote(poll: Poll, user_id: string): Promise<PollVote>;
+  getResults(poll_id: number): Promise<PollResult>;
+  audit(poll_id: number): Promise<PollAnonymizedRank[]>;
   createPoll(poll_id: number): Promise<number>;
   castVote(poll_id: number, user: TwitchUser, ranks: number[]): Promise<void>;
 }
@@ -79,97 +82,61 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     };
   };
 
-  const pollResults: Map<number, Promise<PollResult[]>> = new Map();
+  const pollResults: Map<number, Promise<IRVResult>> = new Map();
 
-  const runoff = async (poll_id: number): Promise<PollResult[]> => {
-    const allRanks = await kysely
+  const getRawRanks = (poll_id: number): Promise<PollRawRank[]> =>
+    kysely
       .selectFrom('vote')
-      .select(['option_id', 'twitch_user_id', 'vote_rank'])
+      .select(['option_id', 'twitch_user_id', 'vote_rank as rank'])
       .where('poll_id', '=', poll_id)
       .orderBy(['twitch_user_id', 'vote_rank asc'])
       .execute();
 
-    const poll = await getPoll(poll_id);
-    const pollOptions: Map<number, PollOption & { ranks: number[] }> = new Map();
-    for (const option of poll.options) {
-      pollOptions.set(option.option_id, { ...option, ranks: [] });
-    }
-    for (const rank of allRanks) {
-      const option = pollOptions.get(rank.option_id);
-      if (!option) continue;
-      option.ranks.push(rank.vote_rank);
-    }
-
-    const result: PollResult[] = [];
-    const winner_id = irv(allRanks);
-    let winner: PollResult;
-    for (const { ranks, ...option } of pollOptions.values()) {
-      const average_rank =
-        ranks.length === 0 ? pollOptions.size : ranks.reduce((acc, cur) => acc + cur, 0) / ranks.length;
-      const pr: PollResult = { ...option, average_rank };
-      if (pr.option_id === winner_id) winner = pr;
-      else result.push(pr);
-    }
-
-    result.sort((a, b) => a.average_rank - b.average_rank);
-    return [winner!, ...result];
+  const audit = async (poll_id: number): Promise<PollAnonymizedRank[]> => {
+    const idmap = new Map<string, RandId>();
+    const newids = new Set<string>();
+    const rawRanks = await getRawRanks(poll_id);
+    return rawRanks.map(({ option_id, rank, twitch_user_id }): PollAnonymizedRank => {
+      const id = idmap.get(twitch_user_id) ?? randId();
+      idmap.set(twitch_user_id, id);
+      return { id, option_id, rank };
+    });
   };
 
-  const calcResults = (poll_id: number): Promise<PollResult[]> => {
-    const results = pollResults.get(poll_id) ?? runoff(poll_id);
-    pollResults.set(poll_id, results);
+  const calcResults = (poll: Poll): Promise<IRVResult> => {
+    const cached = pollResults.get(poll.poll_id);
+    if (cached) return cached;
+
+    const results = getRawRanks(poll.poll_id).then(ranks => irv(ranks, poll.options));
+    // pollResults.set(poll.poll_id, results);
     return results;
   };
 
-  const getResults = async (poll_id: number): Promise<PollResults> => {
+  const getResults = async (poll_id: number): Promise<PollResult> => {
     const poll = await getPoll(poll_id);
-
-    let anon_id = 0;
-    const voterMap = new Map<string, number>();
-    const anon = (twitch_user_id: string): number => {
-      const anonId = voterMap.get(twitch_user_id);
-      if (anonId !== undefined) return anonId;
-      voterMap.set(twitch_user_id, anon_id);
-      return anon_id++;
-    };
-
-    const votes = (
-      await kysely
-        .selectFrom('vote')
-        .select(['option_id', 'twitch_user_id', 'vote_rank as rank'])
-        .where('poll_id', '=', poll_id)
-        .execute()
-    ).map(
-      ({ option_id, rank, twitch_user_id }): PollAnonymizedVote => ({
-        option_id,
-        rank,
-        voter_id: anon(twitch_user_id),
-      })
-    );
-
-    return { ...poll, votes };
+    const results = await calcResults(poll);
+    console.log(JSON.stringify({ poll, results }));
+    return { poll, results };
   };
 
-  const getVote = async (poll_id: number, user_id: string): Promise<PollVote> => {
-    const poll = await getPoll(poll_id);
+  const getVote = async (poll: Poll, user_id: string): Promise<PollVote> => {
     const ranks = await kysely
       .selectFrom('vote')
       .innerJoin('option', jb =>
         jb
           .onRef('vote.option_id', '=', 'option.option_id')
-          .on('vote.poll_id', '=', poll_id)
-          .on('option.poll_id', '=', poll_id)
+          .on('vote.poll_id', '=', poll.poll_id)
+          .on('option.poll_id', '=', poll.poll_id)
       )
       .select(['option.name', 'vote_rank as rank'])
       .orderBy('rank asc')
       .where('twitch_user_id', '=', user_id)
       .execute();
 
-    if (DateTime.utc().toMillis() >= poll.closes_on.toMillis()) {
-      return { ...poll, open: false, results: await calcResults(poll_id) };
-    }
-
-    return { ...poll, open: true, ranks };
+    return {
+      open: DateTime.utc().toMillis() < poll.closes_on.toMillis(),
+      ranks,
+    };
   };
 
   const castVote = async (poll_id: number, user: TwitchUser, ranks: number[]): Promise<void> => {
@@ -232,5 +199,5 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       return poll_id;
     });
   };
-  return { createPoll, getPoll, getResults, getVote, castVote };
+  return { createPoll, getPoll, getResults, getVote, audit, castVote };
 };

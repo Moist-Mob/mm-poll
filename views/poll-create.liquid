@@ -8,38 +8,58 @@
   <h1 class="mb-2">Create poll</h1>
   <p>Supply a title and one or more options below. Click the
 <!-- esthetic-ignore-next -->
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6 inline-block">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4 inline-block">
     <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
   </svg>
-    icon to remove an item and Create when done. Press Return to add a new entry.</p>
+    icon to remove an item and Create when done. Tip: Press Return to create new entries easily.</p>
   {% raw %}
     <script type="text/javascript">
       document.addEventListener('alpine:init', () => {
         Alpine.data('optionForm', () => ({
-          focused: 0,
           options: [{value: ''}],
-          add() {
+
+          focusIndex(idx) {
+            const inputs = document.getElementById('option-form')?.querySelectorAll('.poll-option input');
+            const target = inputs[idx];
+            target?.focus();
+            return !!target;
+          },
+
+          focusEmpty() {
+            const found = this.options.findIndex(v => v.value.trim() === '');
+            if (found > -1) {
+              return this.focusIndex(found);
+            } else {
+              return false;
+            }
+          },
+
+          newRow() {
+            if (this.focusEmpty()) return;
+
             const len = this.options.length;
             this.options.push({value: ''});
-            this.focused = len;
+            setTimeout(() => this.focusIndex(len), 0);
           },
-          remove(idx) {
+
+          removeRow(idx) {
             this.options.splice(idx, 1);
             if (this.options.length === 0) {
-              this.add();
-            } else if (this.focused === this.options.length) {
-              this.focused--;
+              this.newRow();
+            } else {
+              setTimeout(() => {
+                if (this.focusIndex(idx)) return;
+                if (this.focusIndex(this.options.length-1)) return;
+                this.focusEmpty();
+              }, 0);
             }
           },
-          maybeFocus(idx) {
-            if (
-              this.focused === idx &&
-              document.activeElement?.classList.contains('option-item')
-            ) {
-              this.$el.focus();
-            }
-            return "1";
-          },
+
+          handleEnter(idx) {
+            if (this.$el.value === '') return;
+            if (this.focusEmpty()) return;
+            this.newRow();
+          }
         }));
       });
     </script>
@@ -51,7 +71,6 @@
     action="/create"
     x-data="optionForm">
     <input
-      @keydown.enter.stop.prevent
       type="hidden"
       name="csrf-token"
       value="{{ localId | escape }}">
@@ -60,27 +79,27 @@
       <input
         id="title"
         name="title"
-        class="w-full shadow appearance-none border rounded py-2 px-3 mb-2 text-zinc-600 focus-within:text-zinc-900 leading-tight focus:outline-none focus:shadow-outline"
+        class="allow-blur w-full shadow appearance-none border rounded py-2 px-3 mb-2 text-zinc-600 focus-within:text-zinc-900 leading-tight focus:outline-none focus:shadow-outline"
         autofocus
         tabindex="1"
         type="text"
-        placeholder="Title (e.g. What should I play next?)">
-
+        placeholder="Title (e.g. What should I play next?)"
+        @keydown.enter.stop.prevent="handleEnter">
 
       <template x-for="(option, idx) in options" :key="idx">
         <div class="poll-option flex flex-row gap-2">
           <input
-            class="option-item w-full shadow appearance-none border rounded py-2 px-3 text-zinc-600 focus-within:text-zinc-900 leading-tight focus:outline-none focus:shadow-outline"
+            class="allow-blur w-full shadow appearance-none border rounded py-2 px-3 text-zinc-600 focus-within:text-zinc-900 leading-tight focus:outline-none focus:shadow-outline"
             type="text"
             name="option[]"
             placeholder="Option (e.g. Doki Doki Literature Club)"
             x-model="option.value"
-            :tabindex="maybeFocus(idx)"
-            @keydown.enter.stop.prevent="add">
-          <button
-            class="w-6 h-6 py-2 hover:text-orange-400 focus:outline-none focus:text-orange-400"
             tabindex="1"
-            @click.prevent="remove(idx)">
+            @keydown.enter.stop.prevent="handleEnter">
+          <button
+            class="allow-blur w-6 h-6 py-2 hover:text-orange-400 focus:outline-none focus:text-orange-400"
+            tabindex="1"
+            @click.prevent="removeRow(idx)">
 <!-- esthetic-ignore-next -->
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
               <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
@@ -88,7 +107,14 @@
           </button>
         </div>
       </template>
+
+      <button
+        class="allow-blur font-bold py-2 px-6 mt-2 w-full rounded-lg text-zinc-800 bg-zinc-300 hover:bg-zinc-400 focus:outline-none focus:bg-zinc-400"
+        tabindex="2"
+        type="submit"
+        @click.prevent="newRow">New row</button>
     </div>
+
     <button
       class="font-bold py-3 px-12 mt-12 mx-auto rounded-lg text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400"
       tabindex="2"

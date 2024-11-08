@@ -10,16 +10,30 @@ export interface ApiFns {
 export const initApiRoutes = ({ poll }: PDeps<'poll'>): ApiFns => {
   const router = express.Router();
 
-  router.get('/poll/:poll_id', async (req, res) => {
-    const poll_id = parseInt(req.params.poll_id);
+  router.get('/poll/:poll_id/results', async (req, res) => {
+    const poll_id = parseInt(req.params.poll_id, 10);
     if (isNaN(poll_id)) {
       res.status(400).json({ error: 'invalid poll_id' });
-      res.redirect('/');
       return;
     }
 
     try {
       const results = await poll.getResults(poll_id);
+      res.json(results);
+    } catch (e) {
+      res.status(404).json({ error: 'not found' });
+    }
+  });
+
+  router.get('/poll/:poll_id/audit', async (req, res) => {
+    const poll_id = parseInt(req.params.poll_id, 10);
+    if (isNaN(poll_id)) {
+      res.status(400).json({ error: 'invalid poll_id' });
+      return;
+    }
+
+    try {
+      const results = await poll.audit(poll_id);
       res.json(results);
     } catch (e) {
       res.status(404).json({ error: 'not found' });
