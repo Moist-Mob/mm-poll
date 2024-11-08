@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Application } from 'express';
+import type { Application, RequestHandler } from 'express';
 
 import { type PDeps } from '../deps';
 
@@ -10,7 +10,23 @@ export interface ApiFns {
 export const initApiRoutes = ({ poll }: PDeps<'poll'>): ApiFns => {
   const router = express.Router();
 
-  router.get('/poll/:poll_id/results', async (req, res) => {
+  const requirePollClosed: RequestHandler = async (req, res, next) => {
+    const poll_id = parseInt(req.params.poll_id, 10);
+    if (isNaN(poll_id)) {
+      res.status(400).json({ error: 'invalid poll_id' });
+      return;
+    }
+
+    const poll_ = await poll.getPoll(poll_id);
+    if (poll_.open) {
+      res.status(403).json({ error: 'poll is ongoing' });
+      return;
+    }
+
+    next();
+  };
+
+  router.get('/poll/:poll_id/results', requirePollClosed, async (req, res) => {
     const poll_id = parseInt(req.params.poll_id, 10);
     if (isNaN(poll_id)) {
       res.status(400).json({ error: 'invalid poll_id' });
@@ -25,7 +41,7 @@ export const initApiRoutes = ({ poll }: PDeps<'poll'>): ApiFns => {
     }
   });
 
-  router.get('/poll/:poll_id/audit', async (req, res) => {
+  router.get('/poll/:poll_id/audit', requirePollClosed, async (req, res) => {
     const poll_id = parseInt(req.params.poll_id, 10);
     if (isNaN(poll_id)) {
       res.status(400).json({ error: 'invalid poll_id' });

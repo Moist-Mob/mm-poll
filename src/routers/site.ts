@@ -49,6 +49,12 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       res.redirect('/');
       return;
     }
+    const poll_ = await poll.getPoll(poll_id);
+    if (poll_.open) {
+      res.redirect(`/poll/${poll_id}`);
+      return;
+    }
+
     const rawResults = await poll.getResults(poll_id);
     const ctx = context(req, rawResults);
 
@@ -73,12 +79,12 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       }
 
       const vote = await poll.getVote(poll_, user.user_id);
-      if (!vote.open) {
+      if (!poll_.open) {
         res.redirect(`/poll/${poll_id}/results`);
-      } else if (vote.ranks.length > 1) {
-        res.render('poll-show', context(req, { remaining, poll: poll_, vote }));
+      } else if (vote.length > 1) {
+        res.render('poll-show', context(req, { remaining, poll: poll_, ranks: vote }));
       } else {
-        res.render('poll-cast', context(req, { remaining, poll: poll_, vote }));
+        res.render('poll-cast', context(req, { remaining, poll: poll_, ranks: vote }));
       }
     } catch (e) {
       console.error(e);

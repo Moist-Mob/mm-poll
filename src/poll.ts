@@ -41,12 +41,12 @@ export type PollAnonymizedVote = {
 };
 export type Poll = {
   poll_id: number;
+  open: boolean;
   title: string;
   options: PollOption[];
   created_on: DateTime;
   closes_on: DateTime;
 };
-export type PollVote = { open: boolean; ranks: PollUserVote[] };
 export type PollResults = Poll & { votes: PollAnonymizedVote[] };
 export type PollResult = {
   poll: Poll;
@@ -55,7 +55,7 @@ export type PollResult = {
 
 export interface PollFns {
   getPoll(poll_id: number): Promise<Poll>;
-  getVote(poll: Poll, user_id: string): Promise<PollVote>;
+  getVote(poll: Poll, user_id: string): Promise<PollUserVote[]>;
   getResults(poll_id: number): Promise<PollResult>;
   audit(poll_id: number): Promise<PollAnonymizedRank[]>;
   createPoll(poll_id: number): Promise<number>;
@@ -74,11 +74,15 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       .select(['option_id', 'name'])
       .where('poll_id', '=', poll_id)
       .execute();
+    const created_on = DateTime.fromSeconds(poll.created_on, { locale: 'utc' });
+    const closes_on = DateTime.fromSeconds(poll.closes_on, { locale: 'utc' });
+
     return {
       ...poll,
-      created_on: DateTime.fromSeconds(poll.created_on, { locale: 'utc' }),
-      closes_on: DateTime.fromSeconds(poll.closes_on, { locale: 'utc' }),
+      open: DateTime.utc().toMillis() < closes_on.toMillis(),
       options,
+      created_on,
+      closes_on,
     };
   };
 
@@ -118,8 +122,8 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     return { poll, results };
   };
 
-  const getVote = async (poll: Poll, user_id: string): Promise<PollVote> => {
-    const ranks = await kysely
+  const getVote = (poll: Poll, user_id: string): Promise<PollUserVote[]> =>
+    kysely
       .selectFrom('vote')
       .innerJoin('option', jb =>
         jb
@@ -131,12 +135,6 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       .orderBy('rank asc')
       .where('twitch_user_id', '=', user_id)
       .execute();
-
-    return {
-      open: DateTime.utc().toMillis() < poll.closes_on.toMillis(),
-      ranks,
-    };
-  };
 
   const castVote = async (poll_id: number, user: TwitchUser, ranks: number[]): Promise<void> => {
     const eligible = isEligible(user);
