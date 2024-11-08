@@ -108,14 +108,13 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     if (cached) return cached;
 
     const results = getRawRanks(poll.poll_id).then(ranks => irv(ranks, poll.options));
-    // pollResults.set(poll.poll_id, results);
+    pollResults.set(poll.poll_id, results);
     return results;
   };
 
   const getResults = async (poll_id: number): Promise<PollResult> => {
     const poll = await getPoll(poll_id);
     const results = await calcResults(poll);
-    console.log(JSON.stringify({ poll, results }));
     return { poll, results };
   };
 
