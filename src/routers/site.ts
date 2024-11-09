@@ -49,16 +49,22 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       res.redirect('/');
       return;
     }
-    const poll_ = await poll.getPoll(poll_id);
-    if (poll_.open) {
-      res.redirect(`/poll/${poll_id}`);
-      return;
+
+    try {
+      const poll_ = await poll.getPoll(poll_id);
+      if (poll_.open) {
+        res.redirect(`/poll/${poll_id}`);
+        return;
+      }
+
+      const rawResults = await poll.getResults(poll_id);
+      const ctx = context(req, rawResults);
+
+      res.render('poll-results', ctx);
+    } catch (e) {
+      console.error(e);
+      res.status(404).render('error', context(req, { error: 'Poll not found' }));
     }
-
-    const rawResults = await poll.getResults(poll_id);
-    const ctx = context(req, rawResults);
-
-    res.render('poll-results', ctx);
   });
 
   router.get('/poll/:poll_id', authRedirect, async (req, res) => {
