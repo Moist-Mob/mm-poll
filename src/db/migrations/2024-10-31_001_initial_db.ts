@@ -30,6 +30,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('vote_rank', 'integer', NotNull)
 
     // sqlite primary key implies unique
+    // TODO: remove "vote_rank" from the unique constraint
     .addUniqueConstraint('player_flag_pk', ['poll_id', 'option_id', 'twitch_user_id', 'vote_rank'])
 
     .modifyEnd(sql`STRICT`)

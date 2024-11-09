@@ -149,7 +149,7 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
         .executeTakeFirstOrThrow();
       if (Date.now() >= closes_on * 1000) throw new UserVisibleError('Poll is closed');
 
-      trx
+      await trx
         .insertInto('vote')
         .values(
           ranks.map((option_id, vote_rank) => ({
