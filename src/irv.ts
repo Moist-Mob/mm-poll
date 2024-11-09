@@ -62,7 +62,6 @@ export const irv = (ranks: PollRawRank[], options: PollOption[]): IRVResult => {
 
   // run the rounds
   const totalVoters = votes.length;
-  console.log(votes);
   const eliminations: Entry[] = [];
   let filtered: number[][] = votes.slice();
 
