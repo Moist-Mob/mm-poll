@@ -87,7 +87,7 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       const vote = await poll.getVote(poll_, user.user_id);
       if (!poll_.open) {
         res.redirect(`/poll/${poll_id}/results`);
-      } else if (vote.length > 1) {
+      } else if (vote.length > 0) {
         res.render('poll-show', context(req, { remaining, poll: poll_, ranks: vote }));
       } else {
         res.render('poll-cast', context(req, { remaining, poll: poll_, ranks: vote }));

@@ -6,7 +6,11 @@ import { FileMigrationProvider, Kysely, Migrator, ParseJSONResultsPlugin, Sqlite
 
 import { Database } from './db/types';
 
+import Debug from 'debug';
+
 export const initDb = async (abspath?: string) => {
+  const debugQuery = Debug('db:query');
+
   const dbFile = abspath ?? ':memory:';
   const sqlite = createSqlite3(dbFile);
 
@@ -18,7 +22,11 @@ export const initDb = async (abspath?: string) => {
   const db = new Kysely<Database>({
     dialect,
     // plugins: [new ParseJSONResultsPlugin()],
-    // log: ['query'],
+    log(event) {
+      if (event.level === 'error') {
+        debugQuery(event.query.sql, event.query.parameters);
+      }
+    },
   });
 
   const migrator = new Migrator({

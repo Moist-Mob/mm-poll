@@ -149,6 +149,16 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
         .executeTakeFirstOrThrow();
       if (Date.now() >= closes_on * 1000) throw new UserVisibleError('Poll is closed');
 
+      const res = await trx
+        .selectFrom('vote')
+        .select(eb => eb.fn.countAll().as('count'))
+        .where(eb => eb.and([eb('poll_id', '=', poll_id), eb('twitch_user_id', '=', twitch_user_id)]))
+        .executeTakeFirst()!;
+
+      if (res && res.count && Number(res.count) > 0) {
+        throw new UserVisibleError("You've already voted");
+      }
+
       await trx
         .insertInto('vote')
         .values(
