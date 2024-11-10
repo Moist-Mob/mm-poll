@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { irv } from './irv';
-import { PollOption, PollRawRank } from './poll';
+import { irv } from './irv.js';
+import { PollOption, PollRawRank } from './poll.js';
 
 describe('irv', () => {
   const A = 1;

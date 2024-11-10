@@ -2,8 +2,8 @@ import path from 'node:path';
 
 import { Liquid } from 'liquidjs';
 
-import { Env } from './config';
-import { ExpressContext, ExpressRenderer, PDeps } from './deps';
+import { Env } from './config.js';
+import { ExpressContext, ExpressRenderer, PDeps } from './deps.js';
 
 export const initLiquid = ({ config }: PDeps<'config'>): ExpressRenderer => {
   const engine = new Liquid({

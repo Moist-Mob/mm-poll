@@ -1,8 +1,12 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} **/
 export default {
+  moduleFileExtensions: ['js', 'ts'],
   testEnvironment: 'node',
   transform: {
-    '^.+.tsx?$': ['ts-jest', { useESM: true }],
+    '^.+\\.(ts|tsx)?$': 'ts-jest',
+    '^.+\\.(js|jsx)$': 'babel-jest',
   },
-  extensionsToTreatAsEsm: ['.ts'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
 };

@@ -1,5 +1,5 @@
 import { Kysely, sql } from 'kysely';
-import { CheckEnum, GT, GTE, NotNull, PK, PK_Auto } from '../helpers';
+import { CheckEnum, GT, GTE, NotNull, PK, PK_Auto } from '../helpers.js';
 
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema

@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import Debug from 'debug';
 
-import { PDeps } from './deps';
-import { assertSchema } from './util';
+import { PDeps } from './deps.js';
+import { assertSchema } from './util.js';
 
 const Vote = T.Object({
   poll_id: T.Number(),

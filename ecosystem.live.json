@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "name": "Moist Poll",
+      "script": "dist/index.js",
+      "watch": ["dist"],
+      "interpreter": "node@22.11.0",
+      "env": {
+        "DEBUG": "vote:*",
+        "ENVNAME": "Live",
+        "ORIGIN": "https://poll.moistmob.com/",
+        "BIND_PORT": 3060
+      }
+    }
+  ]
+}

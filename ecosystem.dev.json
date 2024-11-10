@@ -1,0 +1,15 @@
+{
+  "apps": [
+    {
+      "name": "Moist Poll",
+      "script": "npx tsx src/index.ts",
+      "watch": ["src", "tailwind.config.js", "package.json"],
+      "ignore_watch": ["src/db/migrations", "src/**/*.test.ts"],
+      "env": {
+        "ENVNAME": "Dev",
+        "ORIGIN": "https://dev-poll.moistmob.com/",
+        "BIND_PORT": 3050
+      }
+    }
+  ]
+}

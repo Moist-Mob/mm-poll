@@ -1,12 +1,13 @@
 import { type ApiClient } from '@twurple/api';
 import { type Kysely } from 'kysely';
 import { type Database as BetterSqlite3Database } from 'better-sqlite3';
-import { type Config } from './config';
-import { type SecretsFileSource } from './config/secrets';
-import { type JWT } from './jwt';
-import { type Database } from './db/types';
-import { type PollFns } from './poll';
 import { type RequestHandler } from 'express';
+
+import { type Config } from './config.js';
+import { type SecretsFileSource } from './config/secrets.js';
+import { type JWT } from './jwt.js';
+import { type Database } from './db/types.js';
+import { type PollFns } from './poll.js';
 
 export type ExpressContext = {
   settings: any;

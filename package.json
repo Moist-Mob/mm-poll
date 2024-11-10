@@ -5,8 +5,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:css": "tailwindcss -i src/tailwind/style.css -o public/css/style.css",
+    "watch:css": "npm run build:css -- --watch",
+    "build:node": "tsc",
     "watch:node": "tsx --watch src/index.ts",
-    "watch:css": "npm run build:css -- --watch"
+    "build": "npx jest && npm run build:css && npm run build:node"
   },
   "type": "module",
   "author": "",

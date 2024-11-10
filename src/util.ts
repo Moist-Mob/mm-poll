@@ -3,7 +3,7 @@ import { Value } from '@sinclair/typebox/value';
 import type { Request, Response } from 'express';
 import humanizeDuration from 'humanize-duration';
 
-import type { TwitchUser } from './jwt';
+import type { TwitchUser } from './jwt.js';
 
 export const DunkOrSlam_uid = '241636';
 

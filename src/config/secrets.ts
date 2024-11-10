@@ -1,7 +1,7 @@
 import { StaticDecode, StaticEncode, Type as T } from '@sinclair/typebox';
 
-import { TSecret } from './secret';
-import { FileSource } from './file_source';
+import { TSecret } from './secret.js';
+import { FileSource } from './file_source.js';
 
 const AppCredentials = T.Object({
   clientId: T.String(),

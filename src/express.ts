@@ -5,14 +5,13 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import expressSession from 'express-session';
 import createMemoryStore from 'memorystore';
-
 import Debug from 'debug';
-
-import { Env } from './config';
-import { ExpressContext, PDeps } from './deps';
-import { TwitchUser } from './jwt';
 import { nanoid } from 'nanoid';
-import { admins } from './util';
+
+import { Env } from './config.js';
+import { ExpressContext, PDeps } from './deps.js';
+import { TwitchUser } from './jwt.js';
+import { admins } from './util.js';
 
 declare module 'express-session' {
   interface SessionData {

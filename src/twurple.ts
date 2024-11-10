@@ -1,9 +1,9 @@
 import { RefreshingAuthProvider } from '@twurple/auth';
 import { ApiClient } from '@twurple/api';
 
-import { PDeps } from './deps';
-import { UpdateUserCredentials } from './config/secrets';
-import { Secret } from './config/secret';
+import { PDeps } from './deps.js';
+import { UpdateUserCredentials } from './config/secrets.js';
+import { Secret } from './config/secret.js';
 
 export const initTwurple = async ({ secrets }: PDeps<'secrets'>): Promise<ApiClient> => {
   const { app: appCreds, user: userCreds } = (await secrets.load()).twitch;

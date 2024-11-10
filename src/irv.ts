@@ -1,4 +1,4 @@
-import { PollOption, PollRawRank } from './poll';
+import { PollOption, PollRawRank } from './poll.js';
 
 // given votes, an array of ordered choices:
 // [

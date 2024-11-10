@@ -1,6 +1,18 @@
 import { resolve } from 'node:path';
+
 import { Static, Type as T } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
+import Debug from 'debug';
+
+const ENV_ENVNAME = process.env.ENVNAME;
+const ENV_HOSTNAME = process.env.HOSTNAME;
+const ENV_BIND_PORT = process.env.BIND_PORT;
+const ENV_ORIGIN = process.env.ORIGIN;
+const ENV_TITLE = process.env.TITLE;
+const ENV_VIEW_DIR = process.env.VIEW_DIR;
+const ENV_SECRETS_FILE = process.env.SECRETS_FILE;
+
+const debug = Debug('vote:config');
 
 export type Config = Static<typeof Config>;
 
@@ -22,34 +34,43 @@ const HOP = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj,
 const noTrailingSlash = (str: string) => (str.endsWith('/') ? str.slice(0, -1) : str);
 
 const getOrigin = (): string => {
-  const port = process.env.port ?? '3000';
-  const origin = new URL(process.env.baseUrl ?? 'http://localhost');
-  if (!process.env.port) {
-    origin.port = port;
+  if (ENV_ORIGIN) {
+    try {
+      return new URL(ENV_ORIGIN).toString();
+    } catch (e) {
+      debug(`Invalid ORIGIN set in env: '${ENV_ORIGIN}'`);
+    }
   }
-  return origin.toString();
+
+  return new URL(`http://${ENV_HOSTNAME ?? 'localhost'}:${ENV_BIND_PORT ?? '3000'}/`).toString();
 };
 
-export const initConfig = async (): Promise<Config> => {
+export const initConfig = async (): Promise<{ config: Config; pretty: any }> => {
   const origin = getOrigin();
-  const env = process.env.env ?? 'Dev';
+  const env = ENV_ENVNAME ?? 'Dev';
 
   const config: Config = {
-    port: parseInt(process.env.port ?? '3000', 10),
-    title: process.env.title ?? 'Vote',
+    port: parseInt(ENV_BIND_PORT ?? '3000', 10),
+    title: ENV_TITLE ?? 'Vote',
     origin: noTrailingSlash(origin.toString()),
     env: HOP(Env, env) ? (Env as any)[env] : Env.Dev,
-    views: process.env.views ?? resolve(import.meta.dirname, '..', 'views'),
-    secrets: resolve(import.meta.dirname, '..', process.env.secrets ?? 'secrets.json'),
+    views: ENV_VIEW_DIR ?? resolve(import.meta.dirname, '..', 'views'),
+    secrets: resolve(import.meta.dirname, '..', ENV_SECRETS_FILE ?? 'secrets.json'),
   };
 
   if (!Value.Check(Config, config)) {
     for (const err of Value.Errors(Config, config)) {
-      console.error('Invalid config:');
-      console.log(`${err.path}: ${err.message}`);
+      debug('Invalid config:');
+      debug(`${err.path}: ${err.message}`);
     }
     process.exit(1);
   }
 
-  return config;
+  return {
+    config,
+    pretty: {
+      ...config,
+      env: Env[config.env],
+    },
+  };
 };

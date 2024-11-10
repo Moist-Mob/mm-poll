@@ -5,9 +5,9 @@ import { LRUCache } from 'lru-cache';
 
 import Debug from 'debug';
 
-import { PDeps } from '../deps';
-import { TwitchUser } from '../jwt';
-import { assertSchema, DunkOrSlam_uid, sendError } from '../util';
+import { PDeps } from '../deps.js';
+import { TwitchUser } from '../jwt.js';
+import { assertSchema, DunkOrSlam_uid, sendError } from '../util.js';
 
 const stateCache = new LRUCache({
   max: 1000,

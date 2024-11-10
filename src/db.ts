@@ -4,9 +4,9 @@ import path from 'node:path';
 import createSqlite3 from 'better-sqlite3';
 import { FileMigrationProvider, Kysely, Migrator, ParseJSONResultsPlugin, SqliteDialect } from 'kysely';
 
-import { Database } from './db/types';
-
 import Debug from 'debug';
+
+import { Database } from './db/types.js';
 
 export const initDb = async (abspath?: string) => {
   const debugQuery = Debug('db:query');

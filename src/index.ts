@@ -1,29 +1,34 @@
 import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 
-import { initConfig } from './config';
-import { initExpress } from './express';
-import { initLiquid } from './express-liquid';
-import { initSiteRoutes } from './routers/site';
-import { initSecrets } from './config/secrets';
-import { initAuthRoutes } from './routers/auth';
-import { initTwurple } from './twurple';
-import { initJWT } from './jwt';
-import { initPoll } from './poll';
-import { initDb } from './db';
-import { initApiRoutes } from './routers/api';
+import { initConfig } from './config.js';
+import { initExpress } from './express.js';
+import { initLiquid } from './express-liquid.js';
+import { initSiteRoutes } from './routers/site.js';
+import { initSecrets } from './config/secrets.js';
+import { initAuthRoutes } from './routers/auth.js';
+import { initTwurple } from './twurple.js';
+import { initJWT } from './jwt.js';
+import { initPoll } from './poll.js';
+import { initDb } from './db.js';
+import { initApiRoutes } from './routers/api.js';
+
+import Debug from 'debug';
 
 (async () => {
+  const debug = Debug('vote:index');
+
   const dbfile = resolve(import.meta.dirname, '..', 'db.sqlite');
 
-  const config = await initConfig();
+  const { config, pretty } = await initConfig();
+  debug('Running configuration', pretty);
+
   const secrets = initSecrets(config.secrets);
   await secrets.load();
 
   const kysely = await initDb(dbfile);
 
   const apiClient = await initTwurple({ secrets });
-  // const res = await apiClient.channels.getChannelFollowers('241636', '25022069');
 
   const liquid = initLiquid({ config });
   const JWT = await initJWT({ secrets });

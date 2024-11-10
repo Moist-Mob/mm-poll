@@ -1,5 +1,5 @@
 import { Kysely, sql } from 'kysely';
-import { NotNull, PK_Auto } from '../helpers';
+import { NotNull, PK_Auto } from '../helpers.js';
 
 export async function up(db: Kysely<any>): Promise<void> {
   await db.transaction().execute(async trx => {

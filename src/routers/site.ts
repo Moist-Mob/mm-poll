@@ -1,11 +1,11 @@
 import express from 'express';
 import type { Request, RequestHandler, Application } from 'express';
-
 import { nanoid } from 'nanoid';
-import { type PDeps } from '../deps';
-import { type TwitchUser } from '../jwt';
-import { asInt, assertInt, isEligible, sendError, shd, shuffle } from '../util';
-import { UserVisibleError } from '../errors';
+
+import { type PDeps } from '../deps.js';
+import { type TwitchUser } from '../jwt.js';
+import { asInt, assertInt, isEligible, sendError, shd, shuffle } from '../util.js';
+import { UserVisibleError } from '../errors.js';
 
 export interface SiteFns {
   mount(app: Application, path: string): void;

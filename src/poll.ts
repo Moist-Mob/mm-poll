@@ -1,12 +1,12 @@
 import { Type as T } from '@sinclair/typebox';
 import { DateTime } from 'luxon';
-
-import { PDeps } from './deps';
-import { assertSchema, isEligible } from './util';
-import { irv, IRVResult } from './irv';
-import { TwitchUser } from './jwt';
-import { UserVisibleError } from './errors';
 import { nanoid } from 'nanoid';
+
+import { PDeps } from './deps.js';
+import { assertSchema, isEligible } from './util.js';
+import { irv, IRVResult } from './irv.js';
+import { TwitchUser } from './jwt.js';
+import { UserVisibleError } from './errors.js';
 
 type RandId = string & { __brand: 'randid' };
 const randId = () => nanoid(8) as RandId;

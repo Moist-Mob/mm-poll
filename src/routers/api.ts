@@ -1,7 +1,7 @@
 import express from 'express';
 import type { Application, RequestHandler } from 'express';
 
-import { type PDeps } from '../deps';
+import { type PDeps } from '../deps.js';
 
 export interface ApiFns {
   mount(app: Application, path: string): void;
