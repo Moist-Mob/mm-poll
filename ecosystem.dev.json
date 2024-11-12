@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "name": "Moist Poll",
+      "name": "moist-poll-dev",
       "script": "npx tsx src/index.ts",
       "watch": ["src", "tailwind.config.js", "package.json"],
       "ignore_watch": ["src/db/migrations", "src/**/*.test.ts"],

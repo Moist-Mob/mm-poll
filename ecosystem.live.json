@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "name": "Moist Poll",
+      "name": "moist-poll",
       "script": "dist/index.js",
       "watch": ["dist"],
       "interpreter": "node@22.11.0",
