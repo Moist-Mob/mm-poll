@@ -89,6 +89,8 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
         res.redirect(`/poll/${poll_id}/results`);
       } else if (vote.length > 0) {
         res.render('poll-show', context(req, { remaining, poll: poll_, ranks: vote }));
+      } else if (Object.prototype.hasOwnProperty.call(req.query, 'lofi')) {
+        res.render('poll-cast-naive', context(req, { remaining, poll: poll_, ranks: vote }));
       } else {
         res.render('poll-cast', context(req, { remaining, poll: poll_, ranks: vote }));
       }
