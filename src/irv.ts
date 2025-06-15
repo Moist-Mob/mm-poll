@@ -9,11 +9,11 @@ import { PollOption, PollRawRank } from './poll.js';
 //   [option_id, tally],
 //   ...
 // ]
-const tally = (votes: number[][]): [option_id: number, tally: number][] => {
+const tally = (votes: number[][], optionIds: number[]): [option_id: number, tally: number][] => {
   let most = -Infinity;
   let least = Infinity;
 
-  const grouped: Map<number, number> = new Map();
+  const grouped: Map<number, number> = new Map(optionIds.map(opt => [opt, 0]));
   for (const [firstChoice] of votes) {
     grouped.set(firstChoice, (grouped.get(firstChoice) ?? 0) + 1);
   }
@@ -73,17 +73,20 @@ export const irv = (ranks: PollRawRank[], options: PollOption[]): IRVResult => {
     return optionNames.get(id) ?? '(unknown)';
   };
 
+  let remainingOptionIds = options.map(opt => opt.option_id);
+
   while (filtered.length > 0) {
-    tallied = tally(filtered);
+    tallied = tally(filtered, remainingOptionIds);
 
     const best = tallied[0];
     const worst = tallied[tallied.length - 1];
+    const totalVotes = tallied.reduce((acc, cur) => acc + cur[1], 0);
 
     // tie across the board
     if (best[1] === worst[1]) break;
 
     // majority win
-    if (best[1] > totalVoters / 2) break;
+    if (best[1] > totalVotes / 2) break;
 
     // do a new round
     const loserOptionId = worst[0];
@@ -93,6 +96,7 @@ export const irv = (ranks: PollRawRank[], options: PollOption[]): IRVResult => {
       const removed = ranks.filter(optionId => optionId !== loserOptionId);
       return removed.length === 0 ? [] : [removed];
     });
+    remainingOptionIds = remainingOptionIds.filter(optionId => optionId !== loserOptionId);
   }
 
   // make "first eliminated" into "last place"
@@ -121,72 +125,4 @@ export const irv = (ranks: PollRawRank[], options: PollOption[]): IRVResult => {
     final_round: eliminations.length === 0 ? final_round.concat(no_votes) : final_round,
     eliminations: eliminations.length > 0 ? eliminations.concat(no_votes) : [],
   };
-
-  // const candidates = new Set<number>();
-  // const voterPreferences = new Map<string, Omit<RankedVote, 'twitch_user_id'>[]>();
-
-  // for (const { twitch_user_id, option_id, vote_rank } of ranks) {
-  //   candidates.add(option_id);
-  //   const arr = voterPreferences.get(twitch_user_id) ?? [];
-  //   arr.push({ option_id, vote_rank });
-  //   voterPreferences.set(twitch_user_id, arr);
-  // }
-
-  // for (const ranks of voterPreferences.values()) {
-  //   ranks.sort((a, b) => a.vote_rank - b.vote_rank);
-  // }
-
-  // // degenerate cases
-  // if (candidates.size === 0) {
-  //   throw new Error('No ranks present');
-  // }
-
-  // // loop here
-  // while (candidates.size > 1) {
-  //   const votes = new Map<number, number>([...candidates.values()].map(option_id => [option_id, 0]));
-
-  //   // add a vote to everyone's first preference
-  //   for (const prefs of voterPreferences.values()) {
-  //     const option_id = prefs[0].option_id!;
-  //     votes.set(option_id, votes.get(option_id)! + 1);
-  //   }
-
-  //   // see if anyone won
-  //   const target = voterPreferences.size / 2;
-  //   let least = Infinity;
-  //   let least_ids: number[] = [];
-  //   for (const [option_id, tally] of votes.entries()) {
-  //     if (tally > target) return option_id;
-  //     if (tally < least) {
-  //       least = tally;
-  //       least_ids = [option_id];
-  //     } else if (tally === least) {
-  //       least_ids.push(option_id);
-  //     }
-  //   }
-
-  //   if (least_ids.length === 0) {
-  //     throw new Error('least_ids is empty but there was no winner...');
-  //   }
-
-  //   // nobody had > 50%, remove the worst performer
-  //   // we use the initial poll ordering as a tie-breaker if
-  //   // multiple options received the same least number of votes
-  //   // the top entries will have lower autoincrement database
-  //   // ids
-  //   candidates.delete(Math.max(...least_ids));
-
-  //   // remove votes for candidates that no longer exist
-  //   for (const [twitch_user_id, ranks] of voterPreferences.entries()) {
-  //     const filtered = ranks.filter(v => candidates.has(v.option_id));
-  //     if (filtered.length === 0) {
-  //       // no more votes from this user, remove them entirely
-  //       voterPreferences.delete(twitch_user_id);
-  //     } else {
-  //       voterPreferences.set(twitch_user_id, filtered);
-  //     }
-  //   }
-  // }
-
-  // return candidates.values().next().value!;
 };

@@ -6,11 +6,13 @@ describe('irv', () => {
   const A = 1;
   const B = 2;
   const C = 3;
+  const D = 4;
 
   const options: PollOption[] = [
     { name: 'A', option_id: A },
     { name: 'B', option_id: B },
     { name: 'C', option_id: C },
+    { name: 'D', option_id: D },
   ];
 
   const ballot = (twitch_user_id: string, ...votes: number[]): PollRawRank[] =>
@@ -117,6 +119,7 @@ describe('irv', () => {
       { name: 'A', option_id: A, votes: 0 },
       { name: 'B', option_id: B, votes: 0 },
       { name: 'C', option_id: C, votes: 0 },
+      { name: 'D', option_id: D, votes: 0 },
     ]);
   });
 
@@ -141,5 +144,18 @@ describe('irv', () => {
     // // remainder is tied between A and C - A wins (streamer order)
     // remainder is tied - A wins (streamer order)
     expect(irv(votes, options).winner.option_id).toEqual(A);
+  });
+
+  it('removes options that got no zero votes first', () => {
+    const votes: PollRawRank[] = [
+      //
+      ...ballot('1', A, B, C, D),
+      ...ballot('2', C, B, A, D),
+      ...ballot('3', D, B, A, C),
+      ...ballot('4', A, B, C, D),
+      ...ballot('5', C, B, A, D),
+    ];
+    const results = irv(votes, options);
+    expect(results.eliminations[results.eliminations.length - 1].option_id).toEqual(B);
   });
 });
