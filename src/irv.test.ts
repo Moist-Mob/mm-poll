@@ -1,4 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
 import { irv } from './irv.js';
 import { PollOption, PollRawRank } from './poll.js';
 
