@@ -22,12 +22,63 @@
       type="hidden"
       name="poll_id"
       value="{{ poll.poll_id | escape }}">
-    <ol id="ranked-votes" class="relative my-0 pt-4 pb-12 pl-10 w-30 min-h-24 text-zinc-200 bg-sky-700 rounded-xl [&:has(li)_.help]:hidden [&_li]:hover:!bg-transparent [&_li]:pl-2 [&_li]:m-0 divide-opacity-15 divide-solid divide-y divide-zinc-100">
+
+    <!--/* ── ranked list (destination for both modes) ── -->
+    <ol id="ranked-votes" class="relative my-0 pt-4 pb-4 pl-10 w-30 min-h-24 text-zinc-200 bg-sky-700 rounded-xl [&:has(li)_.help]:hidden [&_li]:hover:!bg-transparent [&_li]:pl-2 [&_li]:m-0 divide-opacity-15 divide-solid divide-y divide-zinc-100">
       <div hidden class="help absolute inset-0 text-zinc-300 text-opacity-50 flex items-center">
-        <span class="w-fit mx-auto">Click the up arrow to move items</span>
+        <span class="w-fit mx-auto">
+          Click the up arrow to move items or
+          <a href="#"
+            class="text-zinc-400 hover:text-zinc-200"
+            id="btn-mode-compare">
+            rank by comparing
+          </a>
+        </span>
       </div>
     </ol>
 
+    <!--/* ── pairwise / merge-sort mode ── -->
+    <div hidden id="pairwise-mode" style="display:none" class="flex flex-col gap-4">
+      <div class="flex justify-between items-center text-sm text-zinc-400">
+        <span id="pw-progress"></span>
+        <span id="pw-hint">Which do you prefer?</span>
+      </div>
+
+      <!--/* progress bar -->
+      <div class="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+        <div id="pw-bar" class="h-full bg-orange-500 rounded-full" style="width:0%"></div>
+      </div>
+
+      <div class="flex items-stretch gap-3">
+        <button
+          type="button"
+          id="pw-a"
+          class="flex-1 py-5 px-4 text-center rounded-xl bg-sky-800 text-zinc-200 hover:bg-sky-600 font-medium text-base">
+        </button>
+        <span class="self-center text-zinc-500 text-sm shrink-0">vs</span>
+        <button
+          type="button"
+          id="pw-b"
+          class="flex-1 py-5 px-4 text-center rounded-xl bg-sky-800 text-zinc-200 hover:bg-sky-600 font-medium text-base">
+        </button>
+      </div>
+
+      <div class="text-center">
+        <button
+          type="button"
+          id="pw-tie"
+          class="text-sm text-zinc-400 hover:text-zinc-200 px-5 py-2 rounded-lg border border-zinc-700 hover:border-zinc-500">
+          No preference
+        </button>
+      </div>
+    </div>
+
+    <!--/* shown after sort completes */-->
+    <div id="pw-done" style="display:none" class="text-sm text-zinc-400 text-center py-2">
+      Ranking applied — review above, then submit when ready.
+    </div>
+
+    <!--/* ── option pool (drag-to-rank mode) ── -->
     <ul id="option-pool" class="relative my-0 pl-0 py-4 w-30 min-h-16 w-full bg-zinc-900 bg-opacity-50 rounded-xl [&_li]:list-none divide-opacity-15 divide-solid divide-y divide-zinc-100 [&:has(li)_.help]:hidden">
       {% for option in poll.options %}
         <li class="px-6 py-1 my-0 w-full">
@@ -56,35 +107,51 @@
         </li>
       {% endfor %}
       <div hidden class="help absolute inset-0 text-zinc-300 text-opacity-50 flex items-center">
-        <span class="w-fit mx-auto">Click below to submit your vote!</span>
+        <span id="done-msg" class="w-fit mx-auto">Click below to submit your vote!</span>
       </div>
     </ul>
 
-    <button class="font-bold py-3 px-12 mt-4 mx-auto rounded-lg text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400" type="submit">Submit</button>
+    <button
+      class="font-bold py-3 px-12 mt-4 mx-auto rounded-lg text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400"
+      type="submit">
+      Submit
+    </button>
 
   </form>
+
   <script type="text/javascript">
-      {% raw %}
+    {% raw %}
     (function () {
       'use strict';
-      // i'm not _certain_ that the form keys will be ordered in DOM order,
-      // so this little handler guarantees it by renaming them all
 
-      document.getElementById('submit-vote').addEventListener('click', (ev) => {
+      // ── DOM refs ────────────────────────────────────────────────────────
+      const form        = document.getElementById('submit-vote');
+      const rankedVotes = document.getElementById('ranked-votes');
+      const optionPool  = document.getElementById('option-pool');
+      const pwMode      = document.getElementById('pairwise-mode');
+      const pwA         = document.getElementById('pw-a');
+      const pwB         = document.getElementById('pw-b');
+      const pwTie       = document.getElementById('pw-tie');
+      const pwProgress  = document.getElementById('pw-progress');
+      const pwHint      = document.getElementById('pw-hint');
+      const pwBar       = document.getElementById('pw-bar');
+      const pwDone      = document.getElementById('pw-done');
+      const btnCompare  = document.getElementById('btn-mode-compare');
+
+      // ── drag-to-rank: up-arrow handler ─────────────────────────────────
+      form.addEventListener('click', (ev) => {
         if (!ev.target.matches('.order.up')) return;
         ev.preventDefault();
         ev.stopPropagation();
-
-        document.getElementById('ranked-votes').prepend(ev.target.closest('li'));
+        rankedVotes.prepend(ev.target.closest('li'));
       });
 
-      const rankedVotes = document.getElementById('ranked-votes');
-      document.getElementById('submit-vote').addEventListener('submit', (ev) => {
+      // ── submit: rename inputs in DOM order ─────────────────────────────
+      form.addEventListener('submit', (ev) => {
         let i = 0;
-        for (let element = rankedVotes.firstElementChild; element !== null; element = element.nextElementSibling) {
-          const inp = element.querySelector('input.ranked-option')
+        for (let el = rankedVotes.firstElementChild; el !== null; el = el.nextElementSibling) {
+          const inp = el.querySelector('input.ranked-option');
           if (inp === null) continue;
-          console.log(i, inp.getAttribute('value'));
           inp.setAttribute('name', `ranks[${i++}]`);
         }
         if (i === 0) {
@@ -92,7 +159,160 @@
           alert('Rank at least one option!');
         }
       });
+
+      // ── pairwise / merge-sort ───────────────────────────────────────────
+
+      // Snapshot the pool <li> elements and their labels/ids once on load.
+      // We reference these originals so finishPairwise can move the real
+      // elements into #ranked-votes.
+      const optionEls = [...optionPool.querySelectorAll('li')];
+      const options = optionEls.map(li => ({
+        id:    li.querySelector('input.ranked-option').value,
+        label: li.querySelector('span').textContent.trim(),
+        el:    li,
+      }));
+
+      // Total comparisons for a merge sort of n items (worst case: n⌈log₂n⌉ − 2^⌈log₂n⌉ + 1).
+      // We estimate for the progress bar using n*log2(n)/2 as a reasonable approximation;
+      // exact count isn't critical — the bar just needs to feel like it's moving forward.
+      const estimatedComparisons = Math.ceil(options.length * Math.log2(Math.max(options.length, 2)) / 2);
+      let comparisonsDone = 0;
+
+      // askUser: renders the two candidates and returns a Promise that
+      // resolves to -1 (a wins), 1 (b wins), or 0 (tie / no preference).
+      function askUser(a, b) {
+        return new Promise(resolve => {
+          pwA.textContent = a.label;
+          pwB.textContent = b.label;
+
+          // Reset highlight state
+          pwA.classList.remove('ring-2', 'ring-orange-400', 'bg-sky-600');
+          pwB.classList.remove('ring-2', 'ring-orange-400', 'bg-sky-600');
+          pwTie.classList.remove('text-orange-400', 'border-orange-500');
+
+          function cleanup() {
+            pwA.removeEventListener('click', pickA);
+            pwB.removeEventListener('click', pickB);
+            pwTie.removeEventListener('click', pickTie);
+          }
+
+          function highlight(winner) {
+            if (winner === 'a') {
+              pwA.classList.add('ring-2', 'ring-orange-400', 'bg-sky-600');
+            } else if (winner === 'b') {
+              pwB.classList.add('ring-2', 'ring-orange-400', 'bg-sky-600');
+            } else {
+              pwTie.classList.add('text-orange-400', 'border-orange-500');
+            }
+          }
+
+          function after(result, winner) {
+            cleanup();
+            highlight(winner);
+            comparisonsDone++;
+            const pct = Math.min(100, Math.round((comparisonsDone / estimatedComparisons) * 100));
+            pwBar.style.width = pct + '%';
+            pwProgress.textContent = `Comparison ${comparisonsDone}`;
+            // Brief pause so the user sees their selection before the next pair loads
+            setTimeout(() => resolve(result), 300);
+          }
+
+          function pickA()   { after(-1, 'a');   }
+          function pickB()   { after(1,  'b');   }
+          function pickTie() { after(0,  'tie'); }
+
+          pwA.addEventListener('click', pickA);
+          pwB.addEventListener('click', pickB);
+          pwTie.addEventListener('click', pickTie);
+        });
+      }
+
+      // merge: async merge of two already-sorted sub-arrays.
+      // Each element-to-element comparison calls askUser and awaits the user.
+      async function merge(left, right) {
+        const result = [];
+        let i = 0, j = 0;
+        while (i < left.length && j < right.length) {
+          const cmp = await askUser(left[i], right[j]);
+          if (cmp <= 0) {
+            // left[i] is preferred or tied — keep it first (stable)
+            result.push(left[i++]);
+          } else {
+            result.push(right[j++]);
+          }
+        }
+        // Append any remaining elements (no comparisons needed)
+        return result.concat(left.slice(i)).concat(right.slice(j));
+      }
+
+      // mergeSort: recursive async merge sort.
+      async function mergeSort(arr) {
+        if (arr.length <= 1) return arr;
+        const mid   = Math.floor(arr.length / 2);
+        const left  = await mergeSort(arr.slice(0, mid));
+        const right = await mergeSort(arr.slice(mid));
+        return merge(left, right);
+      }
+
+      // finishPairwise: move the real <li> elements into #ranked-votes in sorted order.
+      function finishPairwise(sorted) {
+        rankedVotes.innerHTML = '';
+        sorted.forEach(opt => {
+          rankedVotes.appendChild(opt.el);
+        });
+        // Hide the comparison UI, show the done message
+        pwA.style.display         = 'none';
+        pwB.style.display         = 'none';
+        pwTie.style.display       = 'none';
+        pwBar.style.width         = '100%';
+        pwHint.textContent        = '';
+        pwProgress.textContent    = 'Done!';
+        pwDone.style.display      = 'block';
+        pwMode.style.display      = 'none';
+        rankedVotes.style.display = '';
+      }
+
+      // startPairwise: reset state and kick off the sort.
+      async function startPairwise() {
+        pwMode.style.display      = 'flex';
+        optionPool.style.display  = 'none';
+        rankedVotes.style.display = 'none';
+        btnCompare.classList.add('active');
+
+        comparisonsDone = 0;
+        pwBar.style.width      = '0%';
+        pwProgress.textContent = '';
+        pwHint.textContent     = 'Which do you prefer?';
+        //pwDone.style.display   = 'none';
+        pwA.style.display      = '';
+        pwB.style.display      = '';
+        pwTie.style.display    = '';
+
+        // Return all <li>s back to the pool in case user has already moved some
+        optionEls.forEach(li => optionPool.appendChild(li));
+
+        // Fisher-Yates shuffle so DOM order doesn't bias which items get
+        // fewer comparisons (elements near the end of a merge sort's input
+        // array tend to get skipped when the other half is exhausted first).
+        const shuffled = [...options];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        // Run the sort — this suspends at each askUser() call waiting for a click
+        const sorted = await mergeSort(shuffled);
+        finishPairwise(sorted);
+      }
+
+      // btnRank.addEventListener('click', () => setMode('rank'));
+      btnCompare.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        startPairwise();
+      });
+
     })();
-      {% endraw %}
+    {% endraw %}
   </script>
+
 {% endblock %}
