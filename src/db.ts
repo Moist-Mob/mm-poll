@@ -2,14 +2,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import createSqlite3 from 'better-sqlite3';
-import {
-  FileMigrationProvider,
-  Kysely,
-  type MigrationProvider,
-  Migrator,
-  ParseJSONResultsPlugin,
-  SqliteDialect,
-} from 'kysely';
+import { Kysely, SqliteDialect } from 'kysely';
+import { FileMigrationProvider, type MigrationProvider, Migrator } from 'kysely/migration';
 
 import Debug from 'debug';
 

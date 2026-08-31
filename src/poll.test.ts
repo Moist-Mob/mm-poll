@@ -2,7 +2,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import createSqlite3 from 'better-sqlite3';
-import { Kysely, type Migration, type MigrationProvider, Migrator, SqliteDialect, sql } from 'kysely';
+import { Kysely, SqliteDialect, sql } from 'kysely';
+import { type Migration, type MigrationProvider, Migrator } from 'kysely/migration';
 
 import { initDb, migrationFolder } from './db.js';
 import { initPoll, PollFns } from './poll.js';

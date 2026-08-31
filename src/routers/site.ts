@@ -6,7 +6,7 @@ import { Type as T } from '@sinclair/typebox';
 
 import { type PDeps } from '../deps.js';
 import { type TwitchUser } from '../jwt.js';
-import { asInt, assertInt, assertSchema, followAgeText, isEligible, sendError, shd, shuffle } from '../util.js';
+import { asInt, assertInt, assertSchema, followAgeText, isEligible, param, sendError, shd, shuffle } from '../util.js';
 import { UserVisibleError } from '../errors.js';
 import { KANO_SCALE, SMALL_SAMPLE } from '../kano.js';
 import { type KanoUserAnswer } from '../poll.js';
@@ -63,7 +63,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
   });
 
   router.get('/poll/:poll_id/results', async (req, res) => {
-    const poll_id = parseInt(req.params.poll_id);
+    const poll_id = asInt(param(req.params.poll_id)) ?? NaN;
     if (isNaN(poll_id)) {
       res.redirect('/');
       return;
@@ -87,7 +87,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
   });
 
   router.get('/poll/:poll_id', authRedirect, async (req, res) => {
-    const poll_id = parseInt(req.params.poll_id);
+    const poll_id = asInt(param(req.params.poll_id)) ?? NaN;
     if (isNaN(poll_id)) {
       res.redirect('/');
       return;
@@ -236,7 +236,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
       sendError(res, 'Access denied');
       return;
     }
-    const poll_id = asInt(req.params.poll_id);
+    const poll_id = asInt(param(req.params.poll_id));
     if (!poll_id) {
       sendError(res, 'Invalid submission');
       return;

@@ -18,6 +18,10 @@ export const assertSchema = <T extends TSchema>(schema: T, data: unknown): Stati
   throw new Error('Invalid data:\n' + errs);
 };
 
+// express types route params as string | string[] (repeated segments); we only
+// ever declare single-segment params, so take the first
+export const param = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
+
 export const asInt = (v: string | undefined): number | undefined => {
   if (typeof v !== 'string') return undefined;
   const num = parseInt(v, 10);

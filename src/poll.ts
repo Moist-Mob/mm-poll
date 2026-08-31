@@ -75,8 +75,7 @@ export type Poll = {
 };
 export type PollResults = Poll & { votes: PollAnonymizedVote[] };
 export type PollResult =
-  | { kind: 'irv'; poll: Poll; results: IRVResult }
-  | { kind: 'kano'; poll: Poll; results: KanoResult };
+  { kind: 'irv'; poll: Poll; results: IRVResult } | { kind: 'kano'; poll: Poll; results: KanoResult };
 
 // a voter's answers for one kano feature
 export type KanoUserAnswer = {
@@ -145,7 +144,8 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
       .selectFrom('vote')
       .select(['option_id', 'twitch_user_id', 'vote_rank as rank'])
       .where('poll_id', '=', poll_id)
-      .orderBy(['twitch_user_id', 'vote_rank asc'])
+      .orderBy('twitch_user_id')
+      .orderBy('vote_rank', 'asc')
       .execute();
 
   const getRawKanoAnswers = async (poll_id: number): Promise<KanoRawAnswer[]> => {
@@ -153,7 +153,8 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
       .selectFrom('kano_vote')
       .select(['option_id', 'twitch_user_id', 'functional', 'dysfunctional'])
       .where('poll_id', '=', poll_id)
-      .orderBy(['twitch_user_id', 'option_id asc'])
+      .orderBy('twitch_user_id')
+      .orderBy('option_id', 'asc')
       .execute();
     // the db CHECK constraint guarantees the 1..5 range
     return rows as KanoRawAnswer[];
@@ -165,20 +166,20 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
 
     if (kind === 'kano') {
       const raw = await getRawKanoAnswers(poll_id);
-      return raw.map(
-        ({ option_id, functional, dysfunctional, twitch_user_id }): KanoAnonymizedAnswer => ({
-          id: anon(twitch_user_id),
-          option_id,
-          functional,
-          dysfunctional,
-        })
-      );
+      return raw.map(({ option_id, functional, dysfunctional, twitch_user_id }): KanoAnonymizedAnswer => ({
+        id: anon(twitch_user_id),
+        option_id,
+        functional,
+        dysfunctional,
+      }));
     }
 
     const rawRanks = await getRawRanks(poll_id);
-    return rawRanks.map(
-      ({ option_id, rank, twitch_user_id }): PollAnonymizedRank => ({ id: anon(twitch_user_id), option_id, rank })
-    );
+    return rawRanks.map(({ option_id, rank, twitch_user_id }): PollAnonymizedRank => ({
+      id: anon(twitch_user_id),
+      option_id,
+      rank,
+    }));
   };
 
   const calcIrvResults = (poll: Poll): Promise<IRVResult> => {
@@ -217,7 +218,7 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
           .on('option.poll_id', '=', poll.poll_id)
       )
       .select(['option.name', 'vote_rank as rank'])
-      .orderBy('rank asc')
+      .orderBy('rank', 'asc')
       .where('twitch_user_id', '=', user_id)
       .execute();
 
@@ -231,7 +232,7 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
           .on('option.poll_id', '=', poll.poll_id)
       )
       .select(['option.option_id', 'option.name', 'kano_vote.functional', 'kano_vote.dysfunctional'])
-      .orderBy('option.option_id asc')
+      .orderBy('option.option_id', 'asc')
       .where('twitch_user_id', '=', user_id)
       .execute();
 
