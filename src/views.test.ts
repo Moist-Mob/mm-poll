@@ -40,7 +40,7 @@ describe('ranked-choice ballot (poll-cast)', () => {
 
   it('starts with nothing ranked and refuses an empty ballot', () => {
     expect(order()).toEqual(['---', 'Alpha', 'Beta', 'Gamma']);
-    expect(divider()).toMatch(/Tap your favourite/);
+    expect(divider()).toMatch(/Tap your favorite/);
     expect(rows().every(li => !li.classList.contains('chosen'))).toBe(true);
 
     expect(trySubmit(form())).toBe(false);

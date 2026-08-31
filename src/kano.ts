@@ -201,9 +201,9 @@ export const wilson = (k: number, n: number, z = Z95): KanoInterval => {
   if (n === 0) return { low: 0, high: 1 };
   const p = k / n;
   const z2n = (z * z) / n;
-  const centre = (p + z2n / 2) / (1 + z2n);
+  const center = (p + z2n / 2) / (1 + z2n);
   const half = (z * Math.sqrt((p * (1 - p)) / n + z2n / (4 * n))) / (1 + z2n);
-  return { low: Math.max(0, centre - half), high: Math.min(1, centre + half) };
+  return { low: Math.max(0, center - half), high: Math.min(1, center + half) };
 };
 
 const overlaps = (a: KanoInterval, b: KanoInterval): boolean => a.low <= b.high && b.low <= a.high;

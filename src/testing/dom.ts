@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Liquid } from 'liquidjs';
 
 // Renders a real view (layout, partials and all) into the test DOM and runs
-// its inline scripts, so page behaviour can be tested end to end: simulate
+// its inline scripts, so page behavior can be tested end to end: simulate
 // clicks, then inspect what the form would submit.
 //
 // Test files using this must opt into a DOM: `// @vitest-environment happy-dom`
