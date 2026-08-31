@@ -24,27 +24,35 @@
       </form>
     {% endif %}
     {% if poll %}
-      <div x-data="{
-        copied: false,
-        timeout: null,
-        copy() {
-          const url = new URL('/poll/{{ poll.poll_id }}', window.location.origin);
-          $clipboard(url.toString());
-
-          this.copied = true;
-
-          clearTimeout(this.timeout);
-          this.timeout = setTimeout(() => {
-            this.copied = false;
-          }, 3000);
-        }
-      }">
-        <button
-          class="px-3 py-1 min-w-28 rounded-lg text-zinc-100 focus:outline-none bg-orange-500 hover:bg-orange-400 focus:bg-orange-400"
-          :class="copied ? 'bg-zinc-600 hover:bg-zinc-600 focus:bg-zinc-600' : ''"
-          x-on:click="copy"
-          x-text="copied ? `Copied!` : `Copy link`">Copy link</button>
-      </div>
+      <button
+        id="copy-link"
+        type="button"
+        data-path="/poll/{{ poll.poll_id }}"
+        class="px-3 py-1 min-w-28 rounded-lg text-zinc-100 focus:outline-none bg-orange-500 hover:bg-orange-400 focus:bg-orange-400 [&.copied]:bg-zinc-600 [&.copied]:hover:bg-zinc-600 [&.copied]:focus:bg-zinc-600">Copy link</button>
+      <script type="text/javascript">
+        (function () {
+          'use strict';
+          const btn = document.getElementById('copy-link');
+          let timeout = null;
+          btn.addEventListener('click', () => {
+            const url = new URL(btn.dataset.path, window.location.origin).toString();
+            const done = ok => {
+              btn.textContent = ok ? 'Copied!' : 'Copy failed';
+              btn.classList.add('copied');
+              clearTimeout(timeout);
+              timeout = setTimeout(() => {
+                btn.textContent = 'Copy link';
+                btn.classList.remove('copied');
+              }, 3000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
+            } else {
+              window.prompt('Copy this link:', url);
+            }
+          });
+        })();
+      </script>
 
     {% endif %}
     {% if user %}

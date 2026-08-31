@@ -1,24 +1,18 @@
 {% layout "default" %}
 
-{% block footer %}
-  <!-- Alpine Plugins -->
-  <script defer src="//cdn.jsdelivr.net/npm/@alpinejs/sort@3.14.3/dist/cdn.min.js"></script>
-{% endblock %}
-
 {% block content %}
 
   {% render "poll-title"
     , title: poll.title
     , remaining: remaining %}
 
-  <p>Arrange options in order of preference (most-preferred first, least-preferred last). You must select at least one option, but you don't have to select every option.</p>
+  <p>Tap the options in order of preference — your favourite first. You don't have to rank everything; anything you leave below the line is simply not counted. Tap a ranked item to remove it, or use the arrows to nudge it.</p>
 
   <form
     id="submit-vote"
     method="post"
     action="/vote"
-    class="flex flex-col min-w-30 gap-4"
-    x-data>
+    class="flex flex-col min-w-30 gap-4">
     <input
       type="hidden"
       name="csrf-token"
@@ -27,67 +21,149 @@
       type="hidden"
       name="poll_id"
       value="{{ poll.poll_id | escape }}">
-    <ol
-      id="ranked-votes"
-      x-sort
-      x-sort:group="ranks"
-      class="relative my-0 pt-4 pb-12 pl-10 w-30 min-h-24 text-zinc-200 bg-sky-700 rounded-xl [&:has(li)_.help]:hidden [&_li]:hover:!bg-transparent [&_li]:pl-2 [&_li]:m-0 divide-opacity-15 divide-solid divide-y divide-zinc-100">
-      <div hidden class="help absolute inset-0 text-zinc-300 text-opacity-50 flex items-center">
-        <span class="w-fit mx-auto">Drag items here to rank them</span>
-      </div>
-    </ol>
 
-    <ul
-      x-sort
-      x-sort:group="ranks"
-      class="relative my-0 pl-0 py-4 w-30 min-h-16 w-full bg-zinc-900 bg-opacity-50 rounded-xl [&_li]:list-none divide-opacity-15 divide-solid divide-y divide-zinc-100 [&:has(li)_.help]:hidden">
+    <ol id="ballot" class="ballot">
+      <li class="divider" data-count="0" aria-hidden="true">
+        <span class="divider-text"></span>
+      </li>
       {% for option in poll.options %}
-        <li class="px-6 py-1 my-0 w-full hover:cursor-move hover:bg-zinc-100 hover:bg-opacity-25" x-sort:item="{{ option.option_id | escape }}">
-          <div class="flex flex-row flex-nowrap items-center">
-            <input
-              class="ranked-option"
-              type="hidden"
-              name="test[]"
-              value="{{ option.option_id | escape }}">
-            <span>{{ option.name | escape }}</span>
-            <div class="w-6 h-6 ml-auto self-start">
-<!-- esthetic-ignore-next -->
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            </div>
-          </div>
+        <li class="row" data-option-id="{{ option.option_id | escape }}">
+          <button type="button" class="pick" aria-pressed="false">
+            <span class="badge" aria-hidden="true"></span>
+            <span class="name">{{ option.name | escape }}</span>
+          </button>
+          <span class="arrows">
+            <button type="button" class="up" aria-label="Move {{ option.name | escape }} up" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5" aria-hidden="true"><path fill-rule="evenodd" d="M14.77 12.79a.75.75 0 0 1-1.06-.02L10 8.832 6.29 12.77a.75.75 0 1 1-1.08-1.04l4.25-4.5a.75.75 0 0 1 1.08 0l4.25 4.5a.75.75 0 0 1-.02 1.06Z" clip-rule="evenodd" /></svg>
+            </button>
+            <button type="button" class="down" aria-label="Move {{ option.name | escape }} down" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" /></svg>
+            </button>
+          </span>
         </li>
       {% endfor %}
-      <div hidden class="help absolute inset-0 text-zinc-300 text-opacity-50 flex items-center">
-        <span class="w-fit mx-auto">Click below to submit your vote!</span>
-      </div>
-    </ul>
+    </ol>
 
     <button class="font-bold py-3 px-12 mt-4 mx-auto rounded-lg text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400" type="submit">Submit</button>
 
   </form>
+
   <script type="text/javascript">
-      {% raw %}
+    {% raw %}
     (function () {
       'use strict';
-      // i'm not _certain_ that the form keys will be ordered in DOM order,
-      // so this little handler guarantees it by renaming them all
-      const rankedVotes = document.getElementById('ranked-votes');
-      document.getElementById('submit-vote').addEventListener('submit', (ev) => {
-        let i = 0;
-        for (let element = rankedVotes.firstElementChild; element !== null; element = element.nextElementSibling) {
-          const inp = element.querySelector('input.ranked-option')
-          if (inp === null) continue;
-          console.log(i, inp.getAttribute('value'));
-          inp.setAttribute('name', `ranks[${i++}]`);
+
+      const list = document.getElementById('ballot');
+      const divider = list.querySelector('.divider');
+      const dividerText = divider.querySelector('.divider-text');
+      const form = document.getElementById('submit-vote');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ranked rows are everything above the divider, in order
+      const ranked = () => {
+        const out = [];
+        for (let el = list.firstElementChild; el !== null && el !== divider; el = el.nextElementSibling) {
+          out.push(el);
         }
-        if (i === 0) {
+        return out;
+      };
+
+      const renumber = () => {
+        const rows = ranked();
+        rows.forEach((row, i) => {
+          row.classList.add('chosen');
+          row.querySelector('.pick').setAttribute('aria-pressed', 'true');
+          row.querySelector('.badge').textContent = String(i + 1);
+          row.querySelector('.up').disabled = i === 0;
+          row.querySelector('.down').disabled = i === rows.length - 1;
+        });
+        for (let el = divider.nextElementSibling; el !== null; el = el.nextElementSibling) {
+          el.classList.remove('chosen');
+          el.querySelector('.pick').setAttribute('aria-pressed', 'false');
+          el.querySelector('.badge').textContent = '';
+          el.querySelector('.up').disabled = true;
+          el.querySelector('.down').disabled = true;
+        }
+        const n = rows.length;
+        const remaining = list.querySelectorAll('li.row').length - n;
+        divider.dataset.count = String(n);
+        dividerText.textContent =
+          n === 0
+            ? 'Tap your favourite to start ranking'
+            : remaining === 0
+              ? 'All ' + n + ' ranked · tap an item to remove it'
+              : n + ' ranked · tap more below to add them';
+      };
+
+      // FLIP: make a DOM change, then animate every row from where it was to where it is
+      const animate = change => {
+        if (reduceMotion) {
+          change();
+          return;
+        }
+        const rows = Array.from(list.children);
+        const before = new Map(rows.map(el => [el, el.getBoundingClientRect().top]));
+        change();
+        for (const el of rows) {
+          const delta = before.get(el) - el.getBoundingClientRect().top;
+          if (delta === 0) continue;
+          el.style.transition = 'none';
+          el.style.transform = 'translateY(' + delta + 'px)';
+        }
+        // force a reflow so the transform above is the starting state
+        void list.offsetHeight;
+        for (const el of rows) {
+          el.style.transition = 'transform 200ms ease-out';
+          el.style.transform = '';
+        }
+      };
+
+      list.addEventListener('click', ev => {
+        const btn = ev.target.closest('button');
+        if (!btn || !list.contains(btn)) return;
+        const row = btn.closest('li.row');
+        if (!row) return;
+        ev.preventDefault();
+
+        if (btn.classList.contains('up')) {
+          const prev = row.previousElementSibling;
+          if (prev && prev !== divider) animate(() => list.insertBefore(row, prev));
+        } else if (btn.classList.contains('down')) {
+          const next = row.nextElementSibling;
+          if (next && next !== divider) animate(() => list.insertBefore(next, row));
+        } else if (row.classList.contains('chosen')) {
+          // unrank: park it just below the divider so it's easy to re-tap
+          animate(() => list.insertBefore(row, divider.nextElementSibling));
+        } else {
+          // rank: append to the ranked section
+          animate(() => list.insertBefore(row, divider));
+        }
+        renumber();
+      });
+
+      list.addEventListener('transitionend', ev => {
+        if (ev.target instanceof HTMLElement) ev.target.style.transition = '';
+      });
+
+      form.addEventListener('submit', ev => {
+        form.querySelectorAll('input[name^="ranks["]').forEach(el => el.remove());
+        const rows = ranked();
+        if (rows.length === 0) {
           ev.preventDefault();
           alert('Rank at least one option!');
+          return;
         }
+        rows.forEach((row, i) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'ranks[' + i + ']';
+          input.value = row.dataset.optionId;
+          form.appendChild(input);
+        });
       });
+
+      renumber();
     })();
-      {% endraw %}
+    {% endraw %}
   </script>
 {% endblock %}

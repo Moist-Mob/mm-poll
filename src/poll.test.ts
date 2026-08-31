@@ -79,6 +79,29 @@ describe('poll (in-memory db)', () => {
     ).rejects.toThrow('Wrong kind');
   });
 
+  it('validates irv ballots server-side regardless of what the client sent', async () => {
+    const poll_id = await poll.createPoll({ title: 'irv', option: ['A', 'B'] });
+    const other_id = await poll.createPoll({ title: 'other', option: ['X'] });
+    const p = await poll.getPoll(poll_id);
+    const [a, b] = p.options.map(o => o.option_id);
+    const [x] = (await poll.getPoll(other_id)).options.map(o => o.option_id);
+
+    // empty
+    await expect(poll.castVote(poll_id, user('1'), [])).rejects.toThrow(UserVisibleError);
+    // an option from a different poll
+    await expect(poll.castVote(poll_id, user('1'), [a!, x!])).rejects.toThrow('Invalid submission');
+    // a made-up option
+    await expect(poll.castVote(poll_id, user('1'), [9999])).rejects.toThrow('Invalid submission');
+    // the same option twice
+    await expect(poll.castVote(poll_id, user('1'), [a!, b!, a!])).rejects.toThrow('Invalid submission');
+    // nothing partial was written by the failed attempts
+    expect(await poll.getVote(p, '1')).toEqual([]);
+
+    // a partial ballot (not every option ranked) is fine for irv
+    await poll.castVote(poll_id, user('1'), [b!]);
+    expect((await poll.getVote(p, '1')).map(v => v.name)).toEqual(['B']);
+  });
+
   it('runs a kano poll end to end', async () => {
     const poll_id = await poll.createPoll({ kind: 'kano', title: 'kano', option: ['X', 'Y'] });
     const p = await poll.getPoll(poll_id);

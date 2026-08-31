@@ -283,7 +283,16 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
   const castVote = async (poll_id: number, user: TwitchUser, ranks: number[]): Promise<void> => {
     const twitch_user_id = user.user_id;
     await kysely.transaction().execute(async trx => {
-      await prepareVote(trx, poll_id, 'irv', user);
+      const options = await prepareVote(trx, poll_id, 'irv', user);
+
+      // the ballot must be a non-empty list of this poll's options, each at most once
+      if (ranks.length === 0) throw new UserVisibleError('You must select at least one option!');
+      const valid = new Set(options.map(opt => opt.option_id));
+      const seen = new Set<number>();
+      for (const option_id of ranks) {
+        if (!valid.has(option_id) || seen.has(option_id)) throw new UserVisibleError('Invalid submission');
+        seen.add(option_id);
+      }
 
       await trx
         .insertInto('vote')

@@ -3,6 +3,41 @@
 @tailwind utilities;
 
 @layer components {
+  /* ranked-choice ballot: one list; ranked rows sit above the divider */
+  .ballot {
+    @apply my-0 pl-0 py-2 w-full list-none bg-zinc-900 bg-opacity-50 rounded-xl [&>li]:my-0 [&>li]:pl-0;
+  }
+  .ballot .row {
+    @apply flex flex-row items-stretch gap-1 px-2 border-b border-zinc-100 border-opacity-10 last:border-b-0;
+  }
+  .ballot .row.chosen {
+    @apply bg-sky-700 bg-opacity-70;
+  }
+  .ballot .pick {
+    @apply flex flex-row items-center gap-3 flex-1 min-h-[3rem] px-2 py-2 text-left text-zinc-200 rounded-md;
+  }
+  .ballot .row:not(.chosen) .pick:hover {
+    @apply bg-zinc-100 bg-opacity-10;
+  }
+  .ballot .badge {
+    @apply inline-flex items-center justify-center shrink-0 w-7 h-7 rounded-full border-2 border-zinc-400 border-opacity-60 text-sm font-bold;
+  }
+  .ballot .row.chosen .badge {
+    @apply bg-orange-500 border-orange-500 text-white;
+  }
+  .ballot .arrows {
+    @apply flex flex-row items-center gap-1;
+  }
+  .ballot .row:not(.chosen) .arrows {
+    @apply hidden;
+  }
+  .ballot .arrows button {
+    @apply flex items-center justify-center w-10 min-h-[2.75rem] rounded-md text-zinc-200 hover:bg-sky-900 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent;
+  }
+  .ballot .divider {
+    @apply flex items-center px-4 py-2 text-sm text-zinc-300 text-opacity-80 border-b-2 border-dashed border-zinc-100 border-opacity-25;
+  }
+
   /* kano ballot answer pills: the radio itself is visually hidden (sr-only)
      but still focusable, so keyboard use and "required" validation keep working */
   .scale-option {

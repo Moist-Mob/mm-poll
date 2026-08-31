@@ -6,7 +6,7 @@ import { Type as T } from '@sinclair/typebox';
 
 import { type PDeps } from '../deps.js';
 import { type TwitchUser } from '../jwt.js';
-import { asInt, assertInt, assertSchema, followAgeText, isEligible, sendError, shd } from '../util.js';
+import { asInt, assertInt, assertSchema, followAgeText, isEligible, sendError, shd, shuffle } from '../util.js';
 import { UserVisibleError } from '../errors.js';
 import { KANO_SCALE, SMALL_SAMPLE } from '../kano.js';
 import { type KanoUserAnswer } from '../poll.js';
@@ -130,10 +130,11 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
       const vote = await poll.getVote(poll_, user.user_id);
       if (vote.length > 0) {
         res.render('poll-show', context(req, { remaining, poll: poll_, ranks: vote }));
-      } else if (Object.prototype.hasOwnProperty.call(req.query, 'lofi')) {
-        res.render('poll-cast-naive', context(req, { remaining, poll: poll_, ranks: vote }));
       } else {
-        res.render('poll-cast', context(req, { remaining, poll: poll_, ranks: vote }));
+        // present the options in a random order to avoid position bias; tie-breaks
+        // in the count still use the streamer's order (option ids)
+        const shuffled = { ...poll_, options: shuffle([...poll_.options]) };
+        res.render('poll-cast', context(req, { remaining, poll: shuffled }));
       }
     } catch (e) {
       console.error(e);
@@ -183,7 +184,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
 
     try {
       const ranks_option_ids = ranks.map(assertInt);
-      await poll.castVote(req.body.poll_id, user, ranks_option_ids);
+      await poll.castVote(poll_id, user, ranks_option_ids);
     } catch (e) {
       if (e instanceof UserVisibleError) {
         sendError(res, e.message);
