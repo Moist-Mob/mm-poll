@@ -4,3 +4,4 @@
 *.sqlite
 /secrets.json
 *.bak
+/.claude

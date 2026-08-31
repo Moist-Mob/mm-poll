@@ -2,17 +2,34 @@
 
 {% block content %}
   <h1 class="mb-2">Create poll</h1>
-  <p>Supply a title and one or more options below. Click the
+  <p>Pick a poll type, then supply a title and one or more entries below. Click the
 <!-- esthetic-ignore-next -->
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4 inline-block">
     <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
   </svg>
     icon to remove an item and Create when done. Tip: Press Return to create new entries easily.</p>
+  <ul class="text-sm">
+    <li><b>Ranked vote</b> (instant runoff): viewers rank the options; one winner is chosen by elimination rounds.</li>
+    <li><b>Kano poll</b>: viewers rate how they'd feel with and without each feature; each feature is classified as Must-be, Performance, Attractive, Indifferent, or Reverse.</li>
+  </ul>
   {% raw %}
     <script type="text/javascript">
       document.addEventListener('alpine:init', () => {
         Alpine.data('optionForm', () => ({
+          kind: 'irv',
           options: [{value: ''}],
+
+          get titlePlaceholder() {
+            return this.kind === 'kano'
+              ? 'Title (e.g. Which stream segments should I keep?)'
+              : 'Title (e.g. What should I play next?)';
+          },
+
+          get optionPlaceholder() {
+            return this.kind === 'kano'
+              ? 'Feature (e.g. Viewer-submitted challenges)'
+              : 'Option (e.g. Doki Doki Literature Club)';
+          },
 
           focusIndex(idx) {
             const inputs = document.getElementById('option-form')?.querySelectorAll('.poll-option input');
@@ -72,6 +89,27 @@
       value="{{ localId | escape }}">
     <div class="flex flex-col gap-2 px-6 py-8 bg-sky-700 rounded-xl">
 
+      <div class="flex flex-row flex-wrap gap-x-6 gap-y-1 mb-2 text-zinc-100">
+        <label class="cursor-pointer">
+          <input
+            type="radio"
+            name="kind"
+            value="irv"
+            tabindex="1"
+            x-model="kind">
+          Ranked vote
+        </label>
+        <label class="cursor-pointer">
+          <input
+            type="radio"
+            name="kind"
+            value="kano"
+            tabindex="1"
+            x-model="kind">
+          Kano poll
+        </label>
+      </div>
+
       <input
         id="title"
         name="title"
@@ -80,6 +118,7 @@
         tabindex="1"
         type="text"
         placeholder="Title (e.g. What should I play next?)"
+        :placeholder="titlePlaceholder"
         @keydown.enter.stop.prevent="handleEnter">
 
       <template x-for="(option, idx) in options" :key="idx">
@@ -89,6 +128,7 @@
             type="text"
             name="option[]"
             placeholder="Option (e.g. Doki Doki Literature Club)"
+            :placeholder="optionPlaceholder"
             x-model="option.value"
             tabindex="1"
             @keydown.enter.stop.prevent="handleEnter">

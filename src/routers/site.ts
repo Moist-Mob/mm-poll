@@ -2,10 +2,29 @@ import express from 'express';
 import type { Request, RequestHandler, Application } from 'express';
 import { nanoid } from 'nanoid';
 
+import { Type as T } from '@sinclair/typebox';
+
 import { type PDeps } from '../deps.js';
 import { type TwitchUser } from '../jwt.js';
-import { asInt, assertInt, isEligible, sendError, shd, shuffle } from '../util.js';
+import { asInt, assertInt, assertSchema, isEligible, sendError, shd } from '../util.js';
 import { UserVisibleError } from '../errors.js';
+import { KANO_SCALE } from '../kano.js';
+import { type KanoUserAnswer } from '../poll.js';
+
+// kano ballot form body: answers[o<option_id>][f|d] = "1".."5"
+// (the "o" prefix keeps qs from treating numeric keys as array indices)
+const KanoAnswers = T.Record(T.String({ pattern: '^o[0-9]+$' }), T.Object({ f: T.String(), d: T.String() }), {
+  additionalProperties: false,
+});
+
+// parse the posted `answers` object into ballot rows; throws on malformed input
+// (answer range and option ids are validated by castKanoVote)
+export const parseKanoAnswers = (body: unknown): KanoUserAnswer[] =>
+  Object.entries(assertSchema(KanoAnswers, body)).map(([key, { f, d }]) => ({
+    option_id: assertInt(key.slice(1)),
+    functional: assertInt(f) as KanoUserAnswer['functional'],
+    dysfunctional: assertInt(d) as KanoUserAnswer['dysfunctional'],
+  }));
 
 export interface SiteFns {
   mount(app: Application, path: string): void;
@@ -60,7 +79,7 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       const rawResults = await poll.getResults(poll_id);
       const ctx = context(req, rawResults);
 
-      res.render('poll-results', ctx);
+      res.render(rawResults.kind === 'kano' ? 'kano-results' : 'poll-results', ctx);
     } catch (e) {
       console.error(e);
       res.status(404).render('error', context(req, { error: 'Poll not found' }));
@@ -84,10 +103,23 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
         return;
       }
 
-      const vote = await poll.getVote(poll_, user.user_id);
       if (!poll_.open) {
         res.redirect(`/poll/${poll_id}/results`);
-      } else if (vote.length > 0) {
+        return;
+      }
+
+      if (poll_.kind === 'kano') {
+        const answers = await poll.getKanoVote(poll_, user.user_id);
+        if (answers.length > 0) {
+          res.render('kano-show', context(req, { remaining, poll: poll_, answers }));
+        } else {
+          res.render('kano-cast', context(req, { remaining, poll: poll_, scale: KANO_SCALE }));
+        }
+        return;
+      }
+
+      const vote = await poll.getVote(poll_, user.user_id);
+      if (vote.length > 0) {
         res.render('poll-show', context(req, { remaining, poll: poll_, ranks: vote }));
       } else if (Object.prototype.hasOwnProperty.call(req.query, 'lofi')) {
         res.render('poll-cast-naive', context(req, { remaining, poll: poll_, ranks: vote }));
@@ -143,6 +175,39 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
     try {
       const ranks_option_ids = ranks.map(assertInt);
       await poll.castVote(req.body.poll_id, user, ranks_option_ids);
+    } catch (e) {
+      if (e instanceof UserVisibleError) {
+        sendError(res, e.message);
+      } else {
+        console.error('other error', e);
+        sendError(res, '(Server error)');
+      }
+      return;
+    }
+    res.redirect(`/poll/${poll_id}`);
+  });
+
+  router.post('/vote/kano', validatePost, async (req, res) => {
+    const user = req.session.user!;
+
+    const poll_id = asInt(req.body.poll_id);
+    if (!poll_id) {
+      console.error('no poll_id');
+      sendError(res, 'Invalid submission');
+      return;
+    }
+
+    let answers: KanoUserAnswer[];
+    try {
+      answers = parseKanoAnswers(req.body.answers);
+    } catch (e) {
+      console.error('bad kano answers', e);
+      sendError(res, 'You must answer both questions for every item!');
+      return;
+    }
+
+    try {
+      await poll.castKanoVote(poll_id, user, answers);
     } catch (e) {
       if (e instanceof UserVisibleError) {
         sendError(res, e.message);

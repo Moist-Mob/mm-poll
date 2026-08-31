@@ -1,0 +1,47 @@
+{% layout "default" %}
+
+{% block content %}
+  <div class="flex flex-col min-w-30 w-full">
+    {% render "poll-title"
+      , title: poll.title
+      , remaining: null %}
+    <p>The poll is ended. Here's how each item was classified.</p>
+
+    <div class="flex flex-col gap-3 px-6 py-4 my-0 w-full text-zinc-200 bg-sky-700 rounded-xl">
+      {% for entry in results.features %}
+        <div class="py-1 w-full border-b border-zinc-50 border-opacity-15 last:border-b-0">
+          <div class="flex flex-row flex-nowrap items-center gap-2">
+            <span class="text-lg font-bold text-zinc-100">{{ entry.name | escape }}</span>
+            <span class="ml-auto px-2 py-0.5 rounded-md text-sm font-bold whitespace-nowrap
+              {% case entry.category %}
+                {% when 'M' %}bg-red-500 text-white
+                {% when 'O' %}bg-orange-500 text-white
+                {% when 'A' %}bg-emerald-500 text-white
+                {% when 'I' %}bg-zinc-500 text-white
+                {% when 'R' %}bg-purple-600 text-white
+                {% else %}bg-zinc-700 text-zinc-300
+              {% endcase %}">{{ entry.category_name | escape }}</span>
+          </div>
+          <div class="flex flex-row flex-wrap gap-x-4 gap-y-1 mt-1 text-sm">
+            <span title="Satisfaction if present">Better: <b>{{ entry.better | times: 100 | round }}%</b></span>
+            <span title="Dissatisfaction if absent">Worse: <b>{{ entry.worse | times: 100 | round }}%</b></span>
+            <span class="ml-auto text-zinc-300 whitespace-nowrap" title="Must-be / Performance / Attractive / Indifferent / Reverse / Questionable">
+              M {{ entry.counts.M }} · O {{ entry.counts.O }} · A {{ entry.counts.A }} · I {{ entry.counts.I }} · R {{ entry.counts.R }} · Q {{ entry.counts.Q }}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+      <div class="my-2">Total participants: {{ results.total_voters | escape }}</div>
+    </div>
+  </div>
+  <small class="inline-block mt-4">
+    Each answer pair is classified with the Kano evaluation table; an item's category is the most common classification (ties go to Must-be, then Performance, Attractive, Indifferent, Reverse, Questionable).
+    <b>Must-be</b>: expected, its absence causes dissatisfaction.
+    <b>Performance</b>: more is better, less is worse.
+    <b>Attractive</b>: delights when present, not missed when absent.
+    <b>Indifferent</b>: viewers don't care either way.
+    <b>Reverse</b>: viewers would rather not have it.
+    <b>Questionable</b>: contradictory answers.
+    <b>Better</b> is the share of A+O among non-questionable, non-reverse answers (how much satisfaction rises if present); <b>Worse</b> is the share of O+M (how much satisfaction falls if absent).
+  </small>
+</div>{% endblock %}

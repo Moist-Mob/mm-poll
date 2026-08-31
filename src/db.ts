@@ -2,13 +2,24 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import createSqlite3 from 'better-sqlite3';
-import { FileMigrationProvider, Kysely, Migrator, ParseJSONResultsPlugin, SqliteDialect } from 'kysely';
+import {
+  FileMigrationProvider,
+  Kysely,
+  type MigrationProvider,
+  Migrator,
+  ParseJSONResultsPlugin,
+  SqliteDialect,
+} from 'kysely';
 
 import Debug from 'debug';
 
 import { Database } from './db/types.js';
 
-export const initDb = async (abspath?: string) => {
+export const migrationFolder = path.resolve(import.meta.dirname, 'db', 'migrations');
+
+// `provider` exists so tests can load the migrations through their own module
+// loader; production uses the file provider against the compiled migrations.
+export const initDb = async (abspath?: string, provider?: MigrationProvider) => {
   const debugQuery = Debug('db:query');
 
   const dbFile = abspath ?? ':memory:';
@@ -31,11 +42,13 @@ export const initDb = async (abspath?: string) => {
 
   const migrator = new Migrator({
     db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.resolve(import.meta.dirname, 'db', 'migrations'),
-    }),
+    provider:
+      provider ??
+      new FileMigrationProvider({
+        fs,
+        path,
+        migrationFolder,
+      }),
   });
 
   const { error, results } = await migrator.migrateToLatest();

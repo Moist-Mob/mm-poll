@@ -35,7 +35,7 @@ import Debug from 'debug';
   const app = await initExpress({ config, liquid, JWT });
   const poll = initPoll({ kysely });
 
-  const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient });
+  const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient, JWT });
   mountAuth(app, '/auth');
 
   const { mount: mountApi } = initApiRoutes({ poll });

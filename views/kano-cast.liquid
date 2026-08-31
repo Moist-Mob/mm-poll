@@ -1,0 +1,66 @@
+{% layout "default" %}
+
+{% block content %}
+
+  {% render "poll-title"
+    , title: poll.title
+    , remaining: remaining %}
+
+  <p>For each item below, answer both questions: how you'd feel if we <b>had</b> it, and how you'd feel if we <b>didn't</b>. You must answer every question before submitting.</p>
+
+  <form
+    id="submit-vote"
+    method="post"
+    action="/vote/kano"
+    class="flex flex-col min-w-30 gap-4">
+    <input
+      type="hidden"
+      name="csrf-token"
+      value="{{ localId | escape }}">
+    <input
+      type="hidden"
+      name="poll_id"
+      value="{{ poll.poll_id | escape }}">
+
+    {% for option in poll.options %}
+      <fieldset class="flex flex-col gap-3 px-6 py-4 my-0 border-0 text-zinc-200 bg-sky-700 rounded-xl">
+        <div class="text-lg font-bold text-zinc-100">{{ option.name | escape }}</div>
+
+        <div>
+          <p class="my-1">How would you feel if we <b>had</b> this?</p>
+          <div class="flex flex-row flex-wrap gap-x-4 gap-y-1">
+            {% for a in scale %}
+              <label class="cursor-pointer whitespace-nowrap">
+                <input
+                  type="radio"
+                  name="answers[o{{ option.option_id | escape }}][f]"
+                  value="{{ a.value | escape }}"
+                  required>
+                {{ a.label | escape }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <p class="my-1">How would you feel if we <b>did not</b> have this?</p>
+          <div class="flex flex-row flex-wrap gap-x-4 gap-y-1">
+            {% for a in scale %}
+              <label class="cursor-pointer whitespace-nowrap">
+                <input
+                  type="radio"
+                  name="answers[o{{ option.option_id | escape }}][d]"
+                  value="{{ a.value | escape }}"
+                  required>
+                {{ a.label | escape }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </fieldset>
+    {% endfor %}
+
+    <button class="font-bold py-3 px-12 mt-4 mx-auto rounded-lg text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400" type="submit">Submit</button>
+
+  </form>
+{% endblock %}

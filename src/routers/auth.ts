@@ -8,6 +8,7 @@ import Debug from 'debug';
 import { PDeps } from '../deps.js';
 import { TwitchUser } from '../jwt.js';
 import { assertSchema, DunkOrSlam_uid, sendError } from '../util.js';
+import { clearUserCookie, setUserCookie } from '../express.js';
 
 const stateCache = new LRUCache({
   max: 1000,
@@ -23,7 +24,8 @@ export const initAuthRoutes = async ({
   config,
   secrets,
   apiClient,
-}: PDeps<'config' | 'secrets' | 'apiClient'>): Promise<AuthFns> => {
+  JWT,
+}: PDeps<'config' | 'secrets' | 'apiClient' | 'JWT'>): Promise<AuthFns> => {
   const debug = Debug('vote:auth');
   const router = express.Router();
 
@@ -123,7 +125,7 @@ export const initAuthRoutes = async ({
   });
 
   router.get('/logout', (req, res) => {
-    res.clearCookie('twitch-user');
+    clearUserCookie(res);
     req.session.destroy(() => {
       res.redirect('/');
     });
@@ -150,7 +152,11 @@ export const initAuthRoutes = async ({
       stateCache.delete(state);
 
       try {
-        req.session.user = await fetchTwitchUser(req, code);
+        const user = await fetchTwitchUser(req, code);
+        req.session.user = user;
+        // issue the JWT cookie right away rather than on the next request, so
+        // login doesn't depend on the in-memory session surviving the redirect
+        setUserCookie(JWT, req, res, user);
         next();
       } catch (err) {
         debug('oauth callback failed', err);

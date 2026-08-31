@@ -79,16 +79,17 @@ export const shd = humanizeDuration.humanizer({
 
 export type Eligibility = true | [ms_to_wait: number, human_msg: string];
 
+export const FOLLOW_AGE_MS = 86400_000 * 7;
+
 export const isEligible = (user: TwitchUser): Eligibility => {
   if (user.user_id in admins) return true;
-  const followed_on = user.followed_on < 0 ? -Infinity : Date.now() - user.followed_on;
-  const eligible_on = followed_on + 86400_000 * 7;
-  const diff = Date.now() - eligible_on;
 
-  if (isFinite(eligible_on) && diff > 0) return true;
+  // followed_on < 0 means "does not follow"
+  if (user.followed_on < 0) return [Infinity, 'Must be a follower for 7 days to participate'];
 
-  const msg = isFinite(diff)
-    ? 'Eligible to participate in ' + shd(diff)
-    : 'Must be a follower for 7 days to participate';
-  return [diff, msg];
+  const eligible_on = user.followed_on + FOLLOW_AGE_MS;
+  const ms_to_wait = eligible_on - Date.now();
+  if (ms_to_wait <= 0) return true;
+
+  return [ms_to_wait, 'Eligible to participate in ' + shd(ms_to_wait)];
 };
