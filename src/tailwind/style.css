@@ -41,7 +41,7 @@
   /* kano ballot answer pills: the radio itself is visually hidden (sr-only)
      but still focusable, so keyboard use and "required" validation keep working */
   .scale-option {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors;
   }
   .scale-option:hover,
   .scale-option:has(:focus-visible) {

@@ -254,23 +254,51 @@ describe('create form (poll-create)', () => {
     expect(optionInputs()).toHaveLength(1);
   });
 
-  it('switching to a Kano poll changes the placeholders and the posted kind', () => {
+  it('switching to a Kano poll changes the placeholders, help text and the posted kind', () => {
+    const help = (kind: string) => form().querySelector<HTMLParagraphElement>(`.kind-help[data-kind="${kind}"]`)!;
+    expect(help('irv').hidden).toBe(false);
+    expect(help('kano').hidden).toBe(true);
+
     const kano = form().querySelector<HTMLInputElement>('input[name="kind"][value="kano"]')!;
     kano.click();
     kano.checked = true;
     kano.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(title().placeholder).toMatch(/segments/i);
-    expect(optionInputs()[0]!.placeholder).toMatch(/^Feature/);
+    expect(title().placeholder).toEqual(title().dataset.placeholderKano);
+    expect(title().placeholder).not.toEqual(title().dataset.placeholderIrv);
+    expect(optionInputs()[0]!.placeholder).toEqual(optionInputs()[0]!.dataset.placeholderKano);
     expect(formEntries(form())).toEqual(expect.arrayContaining([['kind', 'kano']]));
+    expect(help('irv').hidden).toBe(true);
+    expect(help('kano').hidden).toBe(false);
+    expect(help('kano').textContent).toMatch(/Pineapple on pizza/);
 
     // a row added afterwards picks up the kano placeholder too
     optionInputs()[0]!.value = 'x';
     (document.getElementById('new-row') as HTMLButtonElement).click();
-    expect(optionInputs()[1]!.placeholder).toMatch(/^Feature/);
+    expect(optionInputs()[1]!.placeholder).toEqual(optionInputs()[1]!.dataset.placeholderKano);
   });
 });
 
-describe('copy link (navbar)', () => {
+describe('poll actions (poll-title)', () => {
+  const poll = { poll_id: 9, kind: 'irv', open: true, title: 'p', options: [] };
+  const render = (ctx: object) => renderPage('poll-show', { ...base, remaining: '1 hour', ranks: [], poll, ...ctx });
+
+  it('shows Close poll only to admins while the poll is open, and keeps it out of the navbar', async () => {
+    await render({ admin: true });
+    const close = document.querySelector<HTMLFormElement>('form[action="/poll/9/close"]')!;
+    expect(close).not.toBeNull();
+    expect(formEntries(close)).toEqual([['csrf-token', 'csrf-token-value']]);
+    expect(close.closest('nav')).toBeNull();
+    expect(document.querySelector('nav #copy-link')).toBeNull();
+
+    await render({ admin: false });
+    expect(document.querySelector('form[action="/poll/9/close"]')).toBeNull();
+    expect(document.getElementById('copy-link')).not.toBeNull();
+
+    await render({ admin: true, poll: { ...poll, open: false }, remaining: null });
+    expect(document.querySelector('form[action="/poll/9/close"]')).toBeNull();
+    expect(document.getElementById('copy-link')).not.toBeNull();
+  });
+
   it('copies the poll url and shows feedback', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

@@ -1,18 +1,7 @@
 {% layout "default" %}
 
 {% block content %}
-  <h1 class="mb-2">Create poll</h1>
-  <p>Pick a poll type, then supply a title and one or more entries below. Click the
-<!-- esthetic-ignore-next -->
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4 inline-block">
-    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
-  </svg>
-    icon to remove an item and Create when done. Tip: Press Return to create new entries easily.</p>
-  <ul class="text-sm">
-    <li><b>Ranked vote</b> (instant runoff): viewers rank the options; one winner is chosen by elimination rounds.</li>
-    <li><b>Kano poll</b>: viewers rate how they'd feel with and without each item; results show how the audience splits (want it / don't mind / don't want it) and sum up each item as taken for granted, wanted, a bonus, doesn't matter, or better without.</li>
-  </ul>
-  <p class="text-sm">For a Kano poll, name each item as a <b>thing</b>, not a change: "Pineapple on pizza", not "Adding pineapple to pizza". Viewers are asked how they'd feel with it and without it, so the results work for both adding and removing something — but naming a change flips every answer's meaning.</p>
+  <h1 class="mb-4">Create poll</h1>
 
   <form
     id="option-form"
@@ -26,9 +15,10 @@
       value="{{ localId | escape }}">
     <div class="flex flex-col gap-2 px-6 py-8 bg-sky-700 rounded-xl">
 
-      <div class="flex flex-row flex-wrap gap-x-6 gap-y-1 mb-2 text-zinc-100">
-        <label class="cursor-pointer">
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <label class="scale-option justify-center">
           <input
+            class="sr-only"
             type="radio"
             name="kind"
             value="irv"
@@ -36,8 +26,9 @@
             checked>
           Ranked vote
         </label>
-        <label class="cursor-pointer">
+        <label class="scale-option justify-center">
           <input
+            class="sr-only"
             type="radio"
             name="kind"
             value="kano"
@@ -45,6 +36,15 @@
           Kano poll
         </label>
       </div>
+
+      {% comment %} one of these is shown, matching the selected kind {% endcomment %}
+      <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="irv">
+        Viewers rank as many options as they like; one winner is chosen by instant-runoff elimination.
+      </p>
+      <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="kano" hidden>
+        Viewers say how they'd feel <b>with</b> and <b>without</b> each item, and the results show how the audience splits.
+        Name each item as a <b>thing</b>, not a change — "Pineapple on pizza", not "Adding pineapple to pizza" — so the answers mean the same whether you're thinking of adding or removing it.
+      </p>
 
       <input
         id="title"
@@ -54,7 +54,7 @@
         tabindex="1"
         type="text"
         data-placeholder-irv="Title (e.g. What should I play next?)"
-        data-placeholder-kano="Title (e.g. Which stream segments should I keep?)"
+        data-placeholder-kano="Title (e.g. Food preferences)"
         placeholder="Title (e.g. What should I play next?)">
 
       <div id="options" class="flex flex-col gap-2">
@@ -65,7 +65,7 @@
             type="text"
             name="option[]"
             data-placeholder-irv="Option (e.g. Doki Doki Literature Club)"
-            data-placeholder-kano="Feature (e.g. Viewer-submitted challenges)"
+            data-placeholder-kano="Feature (e.g. Pineapple on pizza)"
             placeholder="Option (e.g. Doki Doki Literature Club)"
             tabindex="1">
           <button
@@ -86,6 +86,7 @@
         class="allow-blur font-bold py-2 px-6 mt-2 w-full rounded-lg text-zinc-800 bg-zinc-300 hover:bg-zinc-400 focus:outline-none focus:bg-zinc-400"
         tabindex="2"
         type="button">New row</button>
+      <p class="my-0 mt-1 text-xs text-zinc-300">Tip: press Return in an entry to add the next one; the ✕ removes one.</p>
     </div>
 
     <button
@@ -136,12 +137,15 @@
         }
       };
 
-      // placeholders differ by poll type
+      // placeholders and the help text differ by poll type
       const applyKind = () => {
         const checked = Array.from(form.querySelectorAll('input[name="kind"]')).find(r => r.checked);
         const kind = checked ? checked.value : 'irv';
         form.querySelectorAll('input[data-placeholder-irv]').forEach(input => {
           input.placeholder = input.dataset['placeholder' + (kind === 'kano' ? 'Kano' : 'Irv')];
+        });
+        form.querySelectorAll('.kind-help').forEach(p => {
+          p.hidden = p.dataset.kind !== kind;
         });
       };
 

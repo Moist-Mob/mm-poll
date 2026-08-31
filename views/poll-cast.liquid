@@ -4,7 +4,10 @@
 
   {% render "poll-title"
     , title: poll.title
-    , remaining: remaining %}
+    , remaining: remaining
+    , poll: poll
+    , admin: admin
+    , localId: localId %}
 
   <p>Tap the options in order of preference — your favourite first. You don't have to rank everything; anything you leave below the line is simply not counted. Tap a ranked item to remove it, or use the arrows to nudge it.</p>
 

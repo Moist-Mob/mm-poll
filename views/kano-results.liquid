@@ -4,7 +4,10 @@
   <div class="flex flex-col min-w-30 w-full">
     {% render "poll-title"
       , title: poll.title
-      , remaining: null %}
+      , remaining: null
+      , poll: poll
+      , admin: admin
+      , localId: localId %}
     <p>The poll is ended. {{ results.total_voters | escape }} people answered. For each item, here's how the audience splits between wanting it, not minding, and not wanting it.</p>
 
     <ul class="flex flex-row flex-wrap gap-x-5 gap-y-1 pl-0 my-2 text-sm list-none [&>li]:pl-0 [&>li]:my-0">

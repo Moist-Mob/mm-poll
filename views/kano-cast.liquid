@@ -6,7 +6,10 @@
 
   {% render "poll-title"
     , title: poll.title
-    , remaining: remaining %}
+    , remaining: remaining
+    , poll: poll
+    , admin: admin
+    , localId: localId %}
 
   <p>For each item below, answer both questions: how you'd feel if we <b>had</b> it, and how you'd feel if we <b>didn't</b>. You must answer every question before submitting.</p>
 

@@ -1,10 +1,72 @@
-<h1 class="mb-2">{{ title | escape }}</h1>
-{% if remaining %}
-  <h2 class="mt-4 mb-4 text-base">
-    Time remaining: {{ remaining | escape }}
-  </h2>
-{% else %}
-  <h2 class="mt-4 mb-4">
-    Final results
-  </h2>
-{% endif %}
+{% comment %}
+  poll heading plus the actions that belong to this poll: copy its link, and
+  (admins, while open) close it early. Expects: title, remaining, poll, admin, localId
+{% endcomment %}
+{% comment %}
+  portrait phones: title, time remaining and the buttons stack, left-aligned.
+  wider: [title over time remaining] on the left, buttons on the right.
+{% endcomment %}
+<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+  <div class="min-w-0">
+    <h1 class="my-0 mb-2">{{ title | escape }}</h1>
+    {% if remaining %}
+      <h2 class="my-0 text-base font-normal">Time remaining: {{ remaining | escape }}</h2>
+    {% else %}
+      <h2 class="my-0">Final results</h2>
+    {% endif %}
+  </div>
+  {% if poll %}
+    {% comment %}
+      Copy link always sits at the outer edge of the row — leftmost when the
+      row is stacked/left-aligned (portrait), rightmost when it's on the right
+      (wider) — so it's in the same spot whether or not Close poll is present.
+      DOM order is [Close, Copy]; row-reverse + justify-end flips it on portrait.
+    {% endcomment %}
+    <div class="flex flex-row-reverse justify-end sm:flex-row sm:justify-start flex-wrap items-center gap-2 shrink-0 sm:pt-1">
+      {% if admin and poll.open %}
+        <form
+          method="post"
+          action="/poll/{{ poll.poll_id }}/close"
+          class="my-0"
+          onsubmit="return confirm('Close this poll now? Voting ends immediately and results become visible.')">
+          <input
+            type="hidden"
+            name="csrf-token"
+            value="{{ localId | escape }}">
+          <button
+            type="submit"
+            class="px-3 py-1 rounded-lg text-zinc-100 focus:outline-none bg-zinc-600 hover:bg-red-700 focus:bg-red-700">Close poll</button>
+        </form>
+      {% endif %}
+      <button
+        id="copy-link"
+        type="button"
+        data-path="/poll/{{ poll.poll_id }}"
+        class="px-3 py-1 min-w-28 rounded-lg text-zinc-100 focus:outline-none bg-orange-500 hover:bg-orange-400 focus:bg-orange-400 [&.copied]:bg-zinc-600 [&.copied]:hover:bg-zinc-600 [&.copied]:focus:bg-zinc-600">Copy link</button>
+    </div>
+    <script type="text/javascript">
+      (function () {
+        'use strict';
+        const btn = document.getElementById('copy-link');
+        let timeout = null;
+        btn.addEventListener('click', () => {
+          const url = new URL(btn.dataset.path, window.location.origin).toString();
+          const done = ok => {
+            btn.textContent = ok ? 'Copied!' : 'Copy failed';
+            btn.classList.add('copied');
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+              btn.textContent = 'Copy link';
+              btn.classList.remove('copied');
+            }, 3000);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
+          } else {
+            window.prompt('Copy this link:', url);
+          }
+        });
+      })();
+    </script>
+  {% endif %}
+</div>

@@ -21,7 +21,10 @@
   <div class="flex flex-col min-w-30 w-full">
     {% render "poll-title"
       , title: poll.title
-      , remaining: null %}
+      , remaining: null
+      , poll: poll
+      , admin: admin
+      , localId: localId %}
     <p>The poll is ended. Here are the final results.</p>
 
 

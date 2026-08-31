@@ -1,71 +1,28 @@
-<div class="h-[3rem] flex flex-row items-center gap-4 text-zinc-300 bg-zinc-800 pr-4 [&>*]:py-3">
-  <img src="/img/dnkHappy.png" class="w-10 h-10 ml-3 mr-2 !py-0 self-end">
-  <h2 class="text-lg mr-6">Moist Polls</h2>
+{% comment %}
+  identity only: logo, site name, admin's Create link, and who's logged in.
+  Per-poll actions live in the poll-title partial instead.
+{% endcomment %}
+<div class="min-h-[3rem] flex flex-row flex-wrap items-center gap-x-4 gap-y-1 px-3 text-zinc-300 bg-zinc-800">
+  <img src="/img/dnkHappy.png" class="w-10 h-10 self-end shrink-0">
+  <h2 class="text-lg my-0 mr-2 sm:mr-6 whitespace-nowrap">Moist Polls</h2>
   {% if admin %}
     <a
       tabindex="9"
-      class="hover:text-zinc-100"
+      class="py-3 hover:text-zinc-100"
       href="/create">Create</a>
   {% endif %}
-  <div class="ml-auto flex flex-row gap-4 items-center">
-    {% if poll and admin and poll.open %}
-      <form
-        method="post"
-        action="/poll/{{ poll.poll_id }}/close"
-        class="!py-0 my-0"
-        onsubmit="return confirm('Close this poll now? Voting ends immediately and results become visible.')">
-        <input
-          type="hidden"
-          name="csrf-token"
-          value="{{ localId | escape }}">
-        <button
-          type="submit"
-          class="px-3 py-1 rounded-lg text-zinc-100 focus:outline-none bg-zinc-600 hover:bg-red-700 focus:bg-red-700">Close poll</button>
-      </form>
-    {% endif %}
-    {% if poll %}
-      <button
-        id="copy-link"
-        type="button"
-        data-path="/poll/{{ poll.poll_id }}"
-        class="px-3 py-1 min-w-28 rounded-lg text-zinc-100 focus:outline-none bg-orange-500 hover:bg-orange-400 focus:bg-orange-400 [&.copied]:bg-zinc-600 [&.copied]:hover:bg-zinc-600 [&.copied]:focus:bg-zinc-600">Copy link</button>
-      <script type="text/javascript">
-        (function () {
-          'use strict';
-          const btn = document.getElementById('copy-link');
-          let timeout = null;
-          btn.addEventListener('click', () => {
-            const url = new URL(btn.dataset.path, window.location.origin).toString();
-            const done = ok => {
-              btn.textContent = ok ? 'Copied!' : 'Copy failed';
-              btn.classList.add('copied');
-              clearTimeout(timeout);
-              timeout = setTimeout(() => {
-                btn.textContent = 'Copy link';
-                btn.classList.remove('copied');
-              }, 3000);
-            };
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
-            } else {
-              window.prompt('Copy this link:', url);
-            }
-          });
-        })();
-      </script>
-
-    {% endif %}
+  <div class="ml-auto flex flex-row items-center gap-x-1 whitespace-nowrap">
     {% if user %}
       <span>{{ user.login | escape }}</span>
-      <span>|</span>
+      <span class="mx-1">|</span>
       <a
         tabindex="10"
-        class="hover:text-zinc-100"
+        class="py-3 px-1 hover:text-zinc-100"
         href="/auth/logout">Log out</a>
     {% else %}
       <a
         tabindex="10"
-        class="hover:text-zinc-100"
+        class="py-3 px-1 hover:text-zinc-100"
         href="/auth/login">
         <span class="inline-block w-4 h-4 relative top-[2px] [&_.st0]:fill-white [&_.st1]:fill-twitch-purple">
 <!-- esthetic-ignore-next-->
