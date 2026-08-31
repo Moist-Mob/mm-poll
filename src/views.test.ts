@@ -455,6 +455,43 @@ describe('create form: fill from nominations', () => {
   });
 });
 
+describe('index page (index)', () => {
+  const open = [
+    { poll_id: 1, kind: 'irv', open: true, title: 'Next game', remaining: '5 hours' },
+    { poll_id: 2, kind: 'kano', open: true, title: 'Features', remaining: '1 day' },
+  ];
+  const ended = [{ poll_id: 3, kind: 'irv', open: false, title: 'Old vote', ago: '3 days' }];
+
+  it('prompts logged-out visitors to log in and shows no polls', async () => {
+    await renderPage('index', { title: 't' });
+    // the navbar has its own login link; the prompt lives in the content area
+    expect(document.querySelector('.content a[href="/auth/login"]')).not.toBeNull();
+    expect(document.querySelector('a[href^="/poll/"]')).toBeNull();
+  });
+
+  it('lists open and recently ended polls for logged-in users', async () => {
+    await renderPage('index', { ...base, open, ended });
+
+    const openLink = document.querySelector('a[href="/poll/1"]')!;
+    expect(text(openLink)).toContain('Next game');
+    expect(text(openLink)).toContain('closes in 5 hours');
+    expect(document.querySelector('a[href="/poll/2"]')).not.toBeNull();
+
+    const endedLink = document.querySelector('a[href="/poll/3/results"]')!;
+    expect(text(endedLink)).toContain('Old vote');
+    expect(text(endedLink)).toContain('ended 3 days ago');
+
+    expect(document.querySelector('.content a[href="/auth/login"]')).toBeNull();
+  });
+
+  it('shows empty states instead of bare sections', async () => {
+    await renderPage('index', { ...base, open: [], ended: [] });
+    expect(text(document.body)).toContain('No open polls right now');
+    expect(text(document.body)).toContain('Nothing has ended recently');
+    expect(document.querySelector('a[href^="/poll/"]')).toBeNull();
+  });
+});
+
 describe('poll actions (poll-title)', () => {
   const poll = { poll_id: 9, kind: 'irv', open: true, title: 'p', options: [] };
   const render = (ctx: object) => renderPage('poll-show', { ...base, remaining: '1 hour', ranks: [], poll, ...ctx });

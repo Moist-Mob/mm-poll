@@ -74,6 +74,14 @@ export type Poll = {
   closes_on: DateTime;
 };
 export type PollResults = Poll & { votes: PollAnonymizedVote[] };
+// a row on the index page; no options, they aren't shown there
+export type PollListing = {
+  poll_id: number;
+  kind: PollKind;
+  title: string;
+  open: boolean;
+  closes_on: DateTime;
+};
 export type PollResult =
   { kind: 'irv'; poll: Poll; results: IRVResult } | { kind: 'kano'; poll: Poll; results: KanoResult };
 
@@ -100,8 +108,14 @@ export type KanoAnonymizedAnswer = {
 // kind tells a consumer which shape to expect
 export type PollAudit = PollAnonymizedRank[] | KanoAnonymizedAnswer[];
 
+// "recently ended" is bounded both ways: at most this many polls, and none
+// older than the window below
+export const RECENT_ENDED_LIMIT = 10;
+export const RECENT_ENDED_DAYS = 180;
+
 export interface PollFns {
   getPoll(poll_id: number): Promise<Poll>;
+  listPolls(): Promise<{ open: PollListing[]; ended: PollListing[] }>;
   getVote(poll: Poll, user_id: string): Promise<PollUserVote[]>;
   getKanoVote(poll: Poll, user_id: string): Promise<KanoUserVote[]>;
   getResults(poll_id: number): Promise<PollResult>;
@@ -134,6 +148,37 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
       created_on,
       closes_on,
     };
+  };
+
+  const listPolls = async (): Promise<{ open: PollListing[]; ended: PollListing[] }> => {
+    const now = Math.floor(Date.now() / 1000);
+    const listing = (open: boolean) => (row: { poll_id: number; kind: PollKind; title: string; closes_on: number }) => ({
+      ...row,
+      open,
+      closes_on: DateTime.fromSeconds(row.closes_on, { locale: 'utc' }),
+    });
+
+    // soonest to close first
+    const open = await kysely
+      .selectFrom('poll')
+      .select(['poll_id', 'kind', 'title', 'closes_on'])
+      .where('closes_on', '>', now)
+      .orderBy('closes_on', 'asc')
+      .execute();
+
+    // most recently ended first
+    const oldest = now - RECENT_ENDED_DAYS * 86400;
+    const ended = await kysely
+      .selectFrom('poll')
+      .select(['poll_id', 'kind', 'title', 'closes_on'])
+      .where('closes_on', '<=', now)
+      .where('closes_on', '>', oldest)
+      .orderBy('closes_on', 'desc')
+      .orderBy('poll_id', 'desc')
+      .limit(RECENT_ENDED_LIMIT)
+      .execute();
+
+    return { open: open.map(listing(true)), ended: ended.map(listing(false)) };
   };
 
   const irvResults: Map<number, Promise<IRVResult>> = new Map();
@@ -392,5 +437,5 @@ export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFn
     kanoResults.delete(poll_id);
   };
 
-  return { createPoll, closePoll, getPoll, getResults, getVote, getKanoVote, audit, castVote, castKanoVote };
+  return { createPoll, closePoll, getPoll, listPolls, getResults, getVote, getKanoVote, audit, castVote, castKanoVote };
 };

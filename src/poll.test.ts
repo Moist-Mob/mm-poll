@@ -3,7 +3,8 @@ import { Kysely, SqliteDialect, sql } from 'kysely';
 import { Migrator } from 'kysely/migration';
 
 import { initDb } from './db.js';
-import { initPoll, PollFns } from './poll.js';
+import { initPoll, PollFns, RECENT_ENDED_DAYS, RECENT_ENDED_LIMIT } from './poll.js';
+import { Database } from './db/types.js';
 import { Config, Env } from './config.js';
 import { TwitchUser } from './user.js';
 import { KanoAnswer } from './kano.js';
@@ -31,9 +32,10 @@ const config: Config = {
 
 describe('poll (in-memory db)', () => {
   let poll: PollFns;
+  let kysely: Kysely<Database>;
 
   beforeEach(async () => {
-    const kysely = await initDb(undefined, testMigrationProvider);
+    kysely = await initDb(undefined, testMigrationProvider);
     poll = initPoll({ kysely, config });
   });
 
@@ -211,6 +213,47 @@ describe('poll (in-memory db)', () => {
     // closing again is harmless and doesn't move the close time forward
     await poll.closePoll(poll_id);
     expect((await poll.getPoll(poll_id)).closes_on.toMillis()).toEqual(after.closes_on.toMillis());
+  });
+
+  // inserted directly so closes_on can be backdated / spread out
+  const insertPoll = (title: string, closes_on: number) =>
+    kysely
+      .insertInto('poll')
+      .values({ kind: 'irv', title, created_on: 0, closes_on })
+      .execute();
+
+  it('splits the index listing into open and ended, ordered for display', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    await insertPoll('open later', now + 5000);
+    await insertPoll('ended oldest', now - 5000);
+    await insertPoll('open soon', now + 100);
+    await insertPoll('ended newest', now - 100);
+    await insertPoll('ended middle', now - 2000);
+    // beyond the recency window: not "recently ended" no matter how few there are
+    await insertPoll('ended ancient', now - (RECENT_ENDED_DAYS + 1) * 86400);
+
+    const { open, ended } = await poll.listPolls();
+    // open: soonest to close first
+    expect(open.map(p => p.title)).toEqual(['open soon', 'open later']);
+    expect(open.every(p => p.open)).toBe(true);
+    // ended: most recently ended first
+    expect(ended.map(p => p.title)).toEqual(['ended newest', 'ended middle', 'ended oldest']);
+    expect(ended.every(p => !p.open)).toBe(true);
+    expect(ended[0]!.closes_on.toSeconds()).toEqual(now - 100);
+  });
+
+  it('caps the ended listing at the most recent few', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    for (let i = 0; i < RECENT_ENDED_LIMIT + 2; i++) {
+      await insertPoll(`p${i}`, now - 1 - i);
+    }
+
+    const { open, ended } = await poll.listPolls();
+    expect(open).toEqual([]);
+    expect(ended).toHaveLength(RECENT_ENDED_LIMIT);
+    // the newest ones survive the cap
+    expect(ended[0]!.title).toEqual('p0');
+    expect(ended[ended.length - 1]!.title).toEqual(`p${RECENT_ENDED_LIMIT - 1}`);
   });
 });
 

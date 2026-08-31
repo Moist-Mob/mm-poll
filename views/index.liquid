@@ -1,0 +1,53 @@
+{% layout "default" %}
+
+{% block content %}
+  {% if user %}
+    <h1 class="mb-4">Polls</h1>
+
+    <div class="flex flex-col gap-1 px-4 py-4 bg-sky-700 rounded-xl">
+      <h2 class="my-0 mb-2 px-2 text-lg text-zinc-100">Open polls</h2>
+      {% if open.size > 0 %}
+        <ul class="list-none p-0 my-0 flex flex-col gap-1">
+          {% for p in open %}
+            <li class="my-0 p-0">
+              <a
+                class="flex flex-row items-baseline gap-2 px-2 py-1 rounded-md no-underline hover:bg-zinc-100/10"
+                href="/poll/{{ p.poll_id }}">
+                <span class="grow text-zinc-100">{{ p.title | escape }}</span>
+                <span class="text-sm font-normal text-zinc-300 whitespace-nowrap">closes in {{ p.remaining | escape }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="my-0 px-2 text-zinc-300">No open polls right now.</p>
+      {% endif %}
+    </div>
+
+    <div class="flex flex-col gap-1 px-4 py-4 mt-6 bg-sky-700 rounded-xl">
+      <h2 class="my-0 mb-2 px-2 text-lg text-zinc-100">Recently ended</h2>
+      {% if ended.size > 0 %}
+        <ul class="list-none p-0 my-0 flex flex-col gap-1">
+          {% for p in ended %}
+            <li class="my-0 p-0">
+              <a
+                class="flex flex-row items-baseline gap-2 px-2 py-1 rounded-md no-underline hover:bg-zinc-100/10"
+                href="/poll/{{ p.poll_id }}/results">
+                <span class="grow text-zinc-100">{{ p.title | escape }}</span>
+                <span class="text-sm font-normal text-zinc-300 whitespace-nowrap">ended {{ p.ago | escape }} ago</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="my-0 px-2 text-zinc-300">Nothing has ended recently.</p>
+      {% endif %}
+    </div>
+  {% else %}
+    <p>Moist Polls is where the channel votes: picking the next game, weighing in on features, that sort of thing.</p>
+    <p>Log in with Twitch to see what's open.</p>
+    <a
+      class="inline-block font-bold py-3 px-12 mt-4 rounded-lg no-underline text-white bg-orange-500 hover:bg-orange-400 focus:outline-none focus:bg-orange-400"
+      href="/auth/login">Log in with Twitch</a>
+  {% endif %}
+{% endblock %}

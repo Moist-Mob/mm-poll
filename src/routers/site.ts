@@ -44,8 +44,22 @@ export interface SiteFns {
 export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'authRedirect' | 'config'>): SiteFns => {
   const router = express.Router();
 
-  router.get('/', (req, res) => {
-    res.render('hello', context(req));
+  router.get('/', async (req, res) => {
+    // logged out: the view shows a login prompt instead of the poll lists
+    if (!req.session.user) {
+      res.render('index', context(req));
+      return;
+    }
+
+    const { open, ended } = await poll.listPolls();
+    res.render(
+      'index',
+      context(req, {
+        // shd humanizes the magnitude, so it works for both directions
+        open: open.map(p => ({ ...p, remaining: shd(p.closes_on.diffNow().toMillis()) })),
+        ended: ended.map(p => ({ ...p, ago: shd(p.closes_on.diffNow().toMillis()) })),
+      })
+    );
   });
 
   router.get('/error', (req, res) => {
