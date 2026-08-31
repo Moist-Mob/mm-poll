@@ -14,7 +14,7 @@ import { initDb } from './db.js';
 
   const kysely = await initDb(dbfile);
 
-  const poll = initPoll({ kysely });
+  const poll = initPoll({ kysely, config });
 
   await poll.getResults(2);
 })();

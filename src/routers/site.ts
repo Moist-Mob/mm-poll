@@ -6,9 +6,9 @@ import { Type as T } from '@sinclair/typebox';
 
 import { type PDeps } from '../deps.js';
 import { type TwitchUser } from '../jwt.js';
-import { asInt, assertInt, assertSchema, isEligible, sendError, shd } from '../util.js';
+import { asInt, assertInt, assertSchema, followAgeText, isEligible, sendError, shd } from '../util.js';
 import { UserVisibleError } from '../errors.js';
-import { KANO_SCALE } from '../kano.js';
+import { KANO_SCALE, SMALL_SAMPLE } from '../kano.js';
 import { type KanoUserAnswer } from '../poll.js';
 
 // kano ballot form body: answers[o<option_id>][f|d] = "1".."5"
@@ -30,7 +30,7 @@ export interface SiteFns {
   mount(app: Application, path: string): void;
 }
 
-export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedirect'>): SiteFns => {
+export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'authRedirect' | 'config'>): SiteFns => {
   const router = express.Router();
 
   type Context = {
@@ -77,7 +77,7 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       }
 
       const rawResults = await poll.getResults(poll_id);
-      const ctx = context(req, rawResults);
+      const ctx = context(req, { ...rawResults, small_sample: SMALL_SAMPLE });
 
       res.render(rawResults.kind === 'kano' ? 'kano-results' : 'poll-results', ctx);
     } catch (e) {
@@ -93,13 +93,22 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       return;
     }
     const user = req.session.user!;
-    const eligible = isEligible(user);
+    const eligible = isEligible(user, config.followAgeDays);
     try {
       const poll_ = await poll.getPoll(poll_id);
       const remaining = shd(poll_.closes_on.diffNow().toMillis());
 
       if (eligible !== true) {
-        res.render('poll-show', context(req, { remaining, eligible_msg: eligible[1]! }));
+        res.render(
+          'poll-ineligible',
+          context(req, {
+            remaining,
+            poll: poll_,
+            eligible_msg: eligible[1],
+            follow_age_days: config.followAgeDays,
+            follow_age: followAgeText(config.followAgeDays),
+          })
+        );
         return;
       }
 
@@ -218,6 +227,27 @@ export const initSiteRoutes = ({ poll, authRedirect }: PDeps<'poll' | 'authRedir
       return;
     }
     res.redirect(`/poll/${poll_id}`);
+  });
+
+  router.post('/poll/:poll_id/close', validatePost, async (req, res) => {
+    if (!req.session.admin) {
+      console.error('refusing to close poll: non-admin');
+      sendError(res, 'Access denied');
+      return;
+    }
+    const poll_id = asInt(req.params.poll_id);
+    if (!poll_id) {
+      sendError(res, 'Invalid submission');
+      return;
+    }
+
+    try {
+      await poll.closePoll(poll_id);
+      res.redirect(`/poll/${poll_id}/results`);
+    } catch (e) {
+      console.error('failed to close poll', e);
+      sendError(res, '(Server error)');
+    }
   });
 
   router.post('/create', validatePost, async (req, res) => {

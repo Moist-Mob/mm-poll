@@ -79,15 +79,24 @@ export const shd = humanizeDuration.humanizer({
 
 export type Eligibility = true | [ms_to_wait: number, human_msg: string];
 
-export const FOLLOW_AGE_MS = 86400_000 * 7;
+export const DAY_MS = 86400_000;
 
-export const isEligible = (user: TwitchUser): Eligibility => {
+// human form of the configured follow-age requirement, e.g. "7 days"
+export const followAgeText = (followAgeDays: number): string => shd(followAgeDays * DAY_MS);
+
+// the rule a viewer must meet, phrased for display
+export const followRuleText = (followAgeDays: number): string =>
+  followAgeDays > 0
+    ? `Must be a follower for ${followAgeText(followAgeDays)} to participate`
+    : 'Must follow the channel to participate';
+
+export const isEligible = (user: TwitchUser, followAgeDays: number): Eligibility => {
   if (user.user_id in admins) return true;
 
   // followed_on < 0 means "does not follow"
-  if (user.followed_on < 0) return [Infinity, 'Must be a follower for 7 days to participate'];
+  if (user.followed_on < 0) return [Infinity, followRuleText(followAgeDays)];
 
-  const eligible_on = user.followed_on + FOLLOW_AGE_MS;
+  const eligible_on = user.followed_on + followAgeDays * DAY_MS;
   const ms_to_wait = eligible_on - Date.now();
   if (ms_to_wait <= 0) return true;
 

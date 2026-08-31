@@ -10,8 +10,9 @@
     icon to remove an item and Create when done. Tip: Press Return to create new entries easily.</p>
   <ul class="text-sm">
     <li><b>Ranked vote</b> (instant runoff): viewers rank the options; one winner is chosen by elimination rounds.</li>
-    <li><b>Kano poll</b>: viewers rate how they'd feel with and without each feature; each feature is classified as Must-be, Performance, Attractive, Indifferent, or Reverse.</li>
+    <li><b>Kano poll</b>: viewers rate how they'd feel with and without each item; results show how the audience splits (want it / don't mind / don't want it) and sum up each item as taken for granted, wanted, a bonus, doesn't matter, or better without.</li>
   </ul>
+  <p class="text-sm">For a Kano poll, name each item as a <b>thing</b>, not a change: "Pineapple on pizza", not "Adding pineapple to pizza". Viewers are asked how they'd feel with it and without it, so the results work for both adding and removing something — but naming a change flips every answer's meaning.</p>
   {% raw %}
     <script type="text/javascript">
       document.addEventListener('alpine:init', () => {
@@ -82,6 +83,7 @@
     class="min-w-30 flex flex-col"
     method="post"
     action="/create"
+    autocomplete="off"
     x-data="optionForm">
     <input
       type="hidden"

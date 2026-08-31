@@ -22,9 +22,10 @@
         {% render "navbar"
           , user: user
           , admin: admin
-          , poll: poll %}
+          , poll: poll
+          , localId: localId %}
       </nav>
-      <div class="content mt-8 p-4 prose prose-zinc prose-invert mx-auto w-full max-w-screen-sm">
+      <div class="content mt-8 p-4 prose prose-zinc prose-invert mx-auto w-full {% block width %}max-w-screen-sm{% endblock %}">
         {% block content %}
         {% endblock %}
       </div>

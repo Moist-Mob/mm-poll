@@ -4,16 +4,15 @@
   <div class="flex flex-col min-w-30">
     {% render "poll-title"
       , title: poll.title
-      , remaining: remaining
-      , eligible_msg: eligible_msg %}
+      , remaining: remaining %}
     <p>The poll is ongoing, but you've already answered. Here's what you said:</p>
     <div class="flex flex-col gap-2 px-6 py-4 my-0 w-full text-zinc-200 bg-sky-700 rounded-xl">
       {% for answer in answers %}
         <div class="py-1 w-full">
           <div class="font-bold text-zinc-100">{{ answer.name | escape }}</div>
           <div class="flex flex-row flex-wrap gap-x-6 text-sm">
-            <span>With it: <b>{{ answer.functional_label | escape }}</b></span>
-            <span>Without it: <b>{{ answer.dysfunctional_label | escape }}</b></span>
+            <span>With it: {{ answer.functional_emoji }} <b>{{ answer.functional_label | escape }}</b></span>
+            <span>Without it: {{ answer.dysfunctional_emoji }} <b>{{ answer.dysfunctional_label | escape }}</b></span>
           </div>
         </div>
       {% endfor %}

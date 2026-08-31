@@ -33,7 +33,7 @@ import Debug from 'debug';
   const liquid = initLiquid({ config });
   const JWT = await initJWT({ secrets });
   const app = await initExpress({ config, liquid, JWT });
-  const poll = initPoll({ kysely });
+  const poll = initPoll({ kysely, config });
 
   const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient, JWT });
   mountAuth(app, '/auth');
@@ -41,7 +41,7 @@ import Debug from 'debug';
   const { mount: mountApi } = initApiRoutes({ poll });
   mountApi(app, '/api');
 
-  const { mount: mountSite } = initSiteRoutes({ poll, authRedirect });
+  const { mount: mountSite } = initSiteRoutes({ poll, authRedirect, config });
   mountSite(app, '/');
 
   const server = createServer(app);

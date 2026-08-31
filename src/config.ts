@@ -11,6 +11,11 @@ const ENV_ORIGIN = process.env.ORIGIN;
 const ENV_TITLE = process.env.TITLE;
 const ENV_VIEW_DIR = process.env.VIEW_DIR;
 const ENV_SECRETS_FILE = process.env.SECRETS_FILE;
+// minimum follow age (in days, fractions allowed) to take part in polls;
+// 0 means any follower can take part
+const ENV_FOLLOW_AGE_DAYS = process.env.FOLLOW_AGE_DAYS;
+
+export const DEFAULT_FOLLOW_AGE_DAYS = 7;
 
 const debug = Debug('vote:config');
 
@@ -28,6 +33,7 @@ const Config = T.Object({
   env: T.Enum(Env),
   views: T.String(),
   secrets: T.String(),
+  followAgeDays: T.Number({ minimum: 0 }),
 });
 
 const HOP = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -56,6 +62,8 @@ export const initConfig = async (): Promise<{ config: Config; pretty: any }> => 
     env: HOP(Env, env) ? (Env as any)[env] : Env.Dev,
     views: ENV_VIEW_DIR ?? resolve(import.meta.dirname, '..', 'views'),
     secrets: resolve(import.meta.dirname, '..', ENV_SECRETS_FILE ?? 'secrets.json'),
+    // an unparseable value becomes NaN and fails validation below
+    followAgeDays: ENV_FOLLOW_AGE_DAYS === undefined ? DEFAULT_FOLLOW_AGE_DAYS : Number(ENV_FOLLOW_AGE_DAYS),
   };
 
   if (!Value.Check(Config, config)) {

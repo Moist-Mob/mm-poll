@@ -6,7 +6,15 @@ import { nanoid } from 'nanoid';
 import { PDeps } from './deps.js';
 import { assertSchema, isEligible } from './util.js';
 import { irv, IRVResult } from './irv.js';
-import { isKanoAnswer, kano, KanoAnswer, KanoRawAnswer, KanoResult, KANO_ANSWER_LABELS } from './kano.js';
+import {
+  isKanoAnswer,
+  kano,
+  KanoAnswer,
+  KanoRawAnswer,
+  KanoResult,
+  KANO_ANSWER_EMOJI,
+  KANO_ANSWER_LABELS,
+} from './kano.js';
 import { TwitchUser } from './jwt.js';
 import { UserVisibleError } from './errors.js';
 import { Database, PollKind } from './db/types.js';
@@ -80,6 +88,8 @@ export type KanoUserVote = KanoUserAnswer & {
   name: string;
   functional_label: string;
   dysfunctional_label: string;
+  functional_emoji: string;
+  dysfunctional_emoji: string;
 };
 export type KanoAnonymizedAnswer = {
   id: RandId;
@@ -98,11 +108,12 @@ export interface PollFns {
   getResults(poll_id: number): Promise<PollResult>;
   audit(poll_id: number): Promise<PollAudit>;
   createPoll(body: unknown): Promise<number>;
+  closePoll(poll_id: number): Promise<void>;
   castVote(poll_id: number, user: TwitchUser, ranks: number[]): Promise<void>;
   castKanoVote(poll_id: number, user: TwitchUser, answers: KanoUserAnswer[]): Promise<void>;
 }
 
-export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
+export const initPoll = ({ kysely, config }: PDeps<'kysely' | 'config'>): PollFns => {
   const getPoll = async (poll_id: number): Promise<Poll> => {
     const poll = await kysely
       .selectFrom('poll')
@@ -231,6 +242,8 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       dysfunctional: dysfunctional as KanoAnswer,
       functional_label: KANO_ANSWER_LABELS[functional as KanoAnswer],
       dysfunctional_label: KANO_ANSWER_LABELS[dysfunctional as KanoAnswer],
+      functional_emoji: KANO_ANSWER_EMOJI[functional as KanoAnswer],
+      dysfunctional_emoji: KANO_ANSWER_EMOJI[dysfunctional as KanoAnswer],
     }));
   };
 
@@ -242,7 +255,7 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
     kind: PollKind,
     user: TwitchUser
   ): Promise<PollOption[]> => {
-    const eligible = isEligible(user);
+    const eligible = isEligible(user, config.followAgeDays);
     if (eligible !== true) throw new UserVisibleError(eligible[1]);
 
     const poll = await trx
@@ -356,5 +369,18 @@ export const initPoll = ({ kysely }: PDeps<'kysely'>): PollFns => {
       return poll_id;
     });
   };
-  return { createPoll, getPoll, getResults, getVote, getKanoVote, audit, castVote, castKanoVote };
+  // end an open poll now; a no-op if it's already closed
+  const closePoll = async (poll_id: number): Promise<void> => {
+    const now = Math.floor(Date.now() / 1000);
+    await kysely
+      .updateTable('poll')
+      .set({ closes_on: now })
+      .where(eb => eb.and([eb('poll_id', '=', poll_id), eb('closes_on', '>', now)]))
+      .execute();
+    // results are cached once computed; make sure nothing stale survives
+    irvResults.delete(poll_id);
+    kanoResults.delete(poll_id);
+  };
+
+  return { createPoll, closePoll, getPoll, getResults, getVote, getKanoVote, audit, castVote, castKanoVote };
 };

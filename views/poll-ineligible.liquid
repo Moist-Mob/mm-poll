@@ -1,0 +1,18 @@
+{% layout "default" %}
+
+{% block content %}
+  <div class="flex flex-col min-w-30">
+    {% render "poll-title"
+      , title: poll.title
+      , remaining: remaining %}
+    <div class="px-6 py-4 my-0 text-zinc-100 bg-sky-700 rounded-xl">
+      <p class="my-0 text-lg font-bold">You can't take part in this poll yet.</p>
+      <p class="my-2">{{ eligible_msg | escape }}</p>
+      {% if follow_age_days > 0 %}
+        <p class="my-0 text-sm text-zinc-300">Polls are open to viewers who have followed the channel for at least {{ follow_age | escape }}. If you've only just followed, come back once that time has passed — the poll is open for the time shown above.</p>
+      {% else %}
+        <p class="my-0 text-sm text-zinc-300">Polls are open to viewers who follow the channel. Follow, then log out and back in so we can see it.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

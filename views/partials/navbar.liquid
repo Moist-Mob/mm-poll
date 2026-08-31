@@ -8,6 +8,21 @@
       href="/create">Create</a>
   {% endif %}
   <div class="ml-auto flex flex-row gap-4 items-center">
+    {% if poll and admin and poll.open %}
+      <form
+        method="post"
+        action="/poll/{{ poll.poll_id }}/close"
+        class="!py-0 my-0"
+        onsubmit="return confirm('Close this poll now? Voting ends immediately and results become visible.')">
+        <input
+          type="hidden"
+          name="csrf-token"
+          value="{{ localId | escape }}">
+        <button
+          type="submit"
+          class="px-3 py-1 rounded-lg text-zinc-100 focus:outline-none bg-zinc-600 hover:bg-red-700 focus:bg-red-700">Close poll</button>
+      </form>
+    {% endif %}
     {% if poll %}
       <div x-data="{
         copied: false,

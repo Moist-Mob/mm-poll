@@ -5,43 +5,94 @@
     {% render "poll-title"
       , title: poll.title
       , remaining: null %}
-    <p>The poll is ended. Here's how each item was classified.</p>
+    <p>The poll is ended. {{ results.total_voters | escape }} people answered. For each item, here's how the audience splits between wanting it, not minding, and not wanting it.</p>
 
-    <div class="flex flex-col gap-3 px-6 py-4 my-0 w-full text-zinc-200 bg-sky-700 rounded-xl">
+    <ul class="flex flex-row flex-wrap gap-x-5 gap-y-1 pl-0 my-2 text-sm list-none [&>li]:pl-0 [&>li]:my-0">
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-teal-600"></span>Strongly want it</li>
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-teal-800"></span>Want it</li>
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-zinc-400"></span>Don't mind</li>
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-orange-800"></span>Don't want it</li>
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-orange-600"></span>Strongly don't want it</li>
+      <li class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-zinc-700"></span>Unclear answer</li>
+    </ul>
+
+    <div class="flex flex-col gap-4 my-0 w-full">
       {% for entry in results.features %}
-        <div class="py-1 w-full border-b border-zinc-50 border-opacity-15 last:border-b-0">
-          <div class="flex flex-row flex-nowrap items-center gap-2">
-            <span class="text-lg font-bold text-zinc-100">{{ entry.name | escape }}</span>
-            <span class="ml-auto px-2 py-0.5 rounded-md text-sm font-bold whitespace-nowrap
-              {% case entry.category %}
-                {% when 'M' %}bg-red-500 text-white
-                {% when 'O' %}bg-orange-500 text-white
-                {% when 'A' %}bg-emerald-500 text-white
-                {% when 'I' %}bg-zinc-500 text-white
-                {% when 'R' %}bg-purple-600 text-white
-                {% else %}bg-zinc-700 text-zinc-300
-              {% endcase %}">{{ entry.category_name | escape }}</span>
-          </div>
-          <div class="flex flex-row flex-wrap gap-x-4 gap-y-1 mt-1 text-sm">
-            <span title="Satisfaction if present">Better: <b>{{ entry.better | times: 100 | round }}%</b></span>
-            <span title="Dissatisfaction if absent">Worse: <b>{{ entry.worse | times: 100 | round }}%</b></span>
-            <span class="ml-auto text-zinc-300 whitespace-nowrap" title="Must-be / Performance / Attractive / Indifferent / Reverse / Questionable">
-              M {{ entry.counts.M }} · O {{ entry.counts.O }} · A {{ entry.counts.A }} · I {{ entry.counts.I }} · R {{ entry.counts.R }} · Q {{ entry.counts.Q }}
-            </span>
-          </div>
-        </div>
+        {% assign want = entry.shares.want | times: 100 | round %}
+        {% assign meh = entry.shares.indifferent | times: 100 | round %}
+        {% assign reject = entry.shares.reject | times: 100 | round %}
+        {% assign unclear = entry.shares.unclear | times: 100 | round %}
+        {% assign strong_want = entry.intensity.strong_want | times: 100 | round %}
+        {% assign mild_want = entry.intensity.mild_want | times: 100 | round %}
+        {% assign mild_reject = entry.intensity.mild_reject | times: 100 | round %}
+        {% assign strong_reject = entry.intensity.strong_reject | times: 100 | round %}
+        {% assign margin = entry.margin | times: 100 | round %}
+        <section class="flex flex-col gap-2 px-6 py-4 my-0 w-full text-zinc-200 bg-sky-700 rounded-xl">
+          <h3 class="my-0 text-lg text-zinc-100">{{ entry.name | escape }}</h3>
+
+          <div class="text-2xl font-bold text-zinc-50 leading-tight">{{ entry.verdict.headline | escape }}</div>
+          {% if entry.verdict.detail != '' %}
+            <p class="my-0 text-sm text-zinc-200">{{ entry.verdict.detail | escape }}</p>
+          {% endif %}
+
+          {% if entry.responses > 0 %}
+            <div
+              class="flex flex-row w-full h-7 mt-1 gap-[2px] p-[2px] rounded-md bg-sky-900 text-xs font-bold text-zinc-50 [&>div]:flex [&>div]:items-center [&>div]:justify-center [&>div]:overflow-hidden [&>div]:rounded-sm"
+              role="img"
+              aria-label="{{ want }}% want it ({{ strong_want }}% strongly), {{ meh }}% don't mind, {{ reject }}% don't want it ({{ strong_reject }}% strongly), {{ unclear }}% unclear">
+              {% if entry.intensity.strong_want > 0 %}
+                <div class="bg-teal-600" style="width: {{ entry.intensity.strong_want | times: 100 }}%" title="Strongly want it: {{ strong_want }}%">{% if strong_want >= 8 %}{{ strong_want }}%{% endif %}</div>
+              {% endif %}
+              {% if entry.intensity.mild_want > 0 %}
+                <div class="bg-teal-800" style="width: {{ entry.intensity.mild_want | times: 100 }}%" title="Want it: {{ mild_want }}%">{% if mild_want >= 8 %}{{ mild_want }}%{% endif %}</div>
+              {% endif %}
+              {% if entry.shares.indifferent > 0 %}
+                <div class="bg-zinc-400 text-zinc-900" style="width: {{ entry.shares.indifferent | times: 100 }}%" title="Don't mind: {{ meh }}%">{% if meh >= 8 %}{{ meh }}%{% endif %}</div>
+              {% endif %}
+              {% if entry.intensity.mild_reject > 0 %}
+                <div class="bg-orange-800" style="width: {{ entry.intensity.mild_reject | times: 100 }}%" title="Don't want it: {{ mild_reject }}%">{% if mild_reject >= 8 %}{{ mild_reject }}%{% endif %}</div>
+              {% endif %}
+              {% if entry.intensity.strong_reject > 0 %}
+                <div class="bg-orange-600" style="width: {{ entry.intensity.strong_reject | times: 100 }}%" title="Strongly don't want it: {{ strong_reject }}%">{% if strong_reject >= 8 %}{{ strong_reject }}%{% endif %}</div>
+              {% endif %}
+              {% if entry.shares.unclear > 0 %}
+                <div class="bg-zinc-700" style="width: {{ entry.shares.unclear | times: 100 }}%" title="Unclear: {{ unclear }}%">{% if unclear >= 8 %}{{ unclear }}%{% endif %}</div>
+              {% endif %}
+            </div>
+
+            <div class="flex flex-row flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-zinc-300">
+              <span>
+                Overall: <b class="text-zinc-100">{{ entry.category_plain | escape }}</b> — {{ entry.category_meaning | escape }}
+                {% unless entry.category_clear or entry.small_sample %}
+                  {% if entry.category_runner_up %}
+                    <span class="text-zinc-200">— close call with {{ entry.category_runner_up_plain | escape }}</span>
+                  {% endif %}
+                {% endunless %}
+              </span>
+              {% if entry.small_sample %}
+                <span class="ml-auto whitespace-nowrap">{{ entry.responses }} {% if entry.responses == 1 %}response{% else %}responses{% endif %} · too few to be reliable</span>
+              {% else %}
+                <span class="ml-auto whitespace-nowrap">{{ entry.responses }} responses · ±{{ margin }}%</span>
+              {% endif %}
+            </div>
+          {% endif %}
+        </section>
       {% endfor %}
-      <div class="my-2">Total participants: {{ results.total_voters | escape }}</div>
     </div>
   </div>
-  <small class="inline-block mt-4">
-    Each answer pair is classified with the Kano evaluation table; an item's category is the most common classification (ties go to Must-be, then Performance, Attractive, Indifferent, Reverse, Questionable).
-    <b>Must-be</b>: expected, its absence causes dissatisfaction.
-    <b>Performance</b>: more is better, less is worse.
-    <b>Attractive</b>: delights when present, not missed when absent.
-    <b>Indifferent</b>: viewers don't care either way.
-    <b>Reverse</b>: viewers would rather not have it.
-    <b>Questionable</b>: contradictory answers.
-    <b>Better</b> is the share of A+O among non-questionable, non-reverse answers (how much satisfaction rises if present); <b>Worse</b> is the share of O+M (how much satisfaction falls if absent).
-  </small>
-</div>{% endblock %}
+
+  <details class="mt-6 text-sm">
+    <summary class="cursor-pointer">How to read this</summary>
+    <ul>
+      <li>Everyone answered two questions per item: how they'd feel <i>with</i> it and how they'd feel <i>without</i> it. Each pair of answers puts that person in one bucket: <b>want it</b> (they'd be happier with it or miss it if gone), <b>don't mind</b>, <b>don't want it</b> (they'd rather it were gone), or <b>unclear</b> (contradictory answers).</li>
+      <li>The <b>±</b> figure is the margin of error at this many responses (95% confidence, Wilson score interval). If the "want it" and "don't want it" ranges overlap, the poll can't tell them apart — the verdict says so. Under {{ small_sample }} responses no margin is shown, because at that size the real shares could be almost anything.</li>
+      <li>The vivid ends of the bar are people who felt <b>strongly</b> — 😍 to one question <i>and</i> 😡 to the other. The dimmer parts are one-sided: they'd enjoy it but not miss it, or miss it but not be excited by it (and likewise for not wanting it). Two long vivid ends means a genuinely polarized audience; long dim ends means a split that nobody feels strongly about.</li>
+      <li><b>Overall</b> sums up the most common kind of answer for the item. The first three all count as "want it" on the bar — they differ in <i>how</i> it's wanted: <i>Taken for granted</i> — not exciting to have, but missed if it went; <i>Wanted</i> — happier with it, unhappy without it; <i>Bonus</i> — enjoyed when present, not missed when gone. Then <i>Doesn't matter</i> — few people care either way; <i>Better without</i> — people would rather not have it; <i>Mixed signals</i> — answers contradict each other. "Close call" means the runner-up was within noise of the winner.</li>
+      <li>Raw counts per item (must-be / performance / attractive / indifferent / reverse / questionable):
+        {% for entry in results.features %}
+          <br><span class="text-zinc-400">{{ entry.name | escape }}: M {{ entry.counts.M }} · O {{ entry.counts.O }} · A {{ entry.counts.A }} · I {{ entry.counts.I }} · R {{ entry.counts.R }} · Q {{ entry.counts.Q }}</span>
+        {% endfor %}
+      </li>
+    </ul>
+  </details>
+{% endblock %}

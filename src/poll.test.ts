@@ -6,6 +6,7 @@ import { Kysely, type Migration, type MigrationProvider, Migrator, SqliteDialect
 
 import { initDb, migrationFolder } from './db.js';
 import { initPoll, PollFns } from './poll.js';
+import { Config, Env } from './config.js';
 import { TwitchUser } from './jwt.js';
 import { KanoAnswer } from './kano.js';
 import { UserVisibleError } from './errors.js';
@@ -32,12 +33,22 @@ const user = (id: string): TwitchUser => ({
   followed_on: Date.now() - 30 * 86400_000,
 });
 
+const config: Config = {
+  env: Env.Dev,
+  port: 0,
+  title: 't',
+  origin: 'http://localhost',
+  views: '',
+  secrets: '',
+  followAgeDays: 7,
+};
+
 describe('poll (in-memory db)', () => {
   let poll: PollFns;
 
   beforeEach(async () => {
     const kysely = await initDb(undefined, provider);
-    poll = initPoll({ kysely });
+    poll = initPoll({ kysely, config });
   });
 
   it('defaults to an irv poll and still runs instant runoff', async () => {
@@ -91,16 +102,20 @@ describe('poll (in-memory db)', () => {
         name: 'X',
         functional: Expect,
         dysfunctional: Dislike,
-        functional_label: 'I expect it',
-        dysfunctional_label: 'I dislike it',
+        functional_label: 'As it should be',
+        dysfunctional_label: 'Hate it',
+        functional_emoji: '🙂',
+        dysfunctional_emoji: '😡',
       },
       {
         option_id: y,
         name: 'Y',
         functional: Like,
         dysfunctional: Tolerate,
-        functional_label: 'I like it',
-        dysfunctional_label: 'I can tolerate it',
+        functional_label: 'Love it',
+        dysfunctional_label: 'Could live with it',
+        functional_emoji: '😍',
+        dysfunctional_emoji: '😕',
       },
     ]);
     expect(await poll.getKanoVote(p, '3')).toEqual([]);
@@ -163,6 +178,30 @@ describe('poll (in-memory db)', () => {
 
   it('rejects an unknown poll kind', async () => {
     await expect(poll.createPoll({ kind: 'approval', title: 'x', option: ['A'] })).rejects.toThrow('Invalid data');
+  });
+
+  it('closes a poll early and blocks further votes', async () => {
+    const poll_id = await poll.createPoll({ kind: 'kano', title: 'k', option: ['X'] });
+    const before = await poll.getPoll(poll_id);
+    expect(before.open).toBe(true);
+    const [x] = before.options.map(o => o.option_id);
+    await poll.castKanoVote(poll_id, user('1'), [{ option_id: x!, functional: Like, dysfunctional: Dislike }]);
+
+    await poll.closePoll(poll_id);
+    const after = await poll.getPoll(poll_id);
+    expect(after.open).toBe(false);
+    expect(after.closes_on.toMillis()).toBeLessThanOrEqual(Date.now());
+
+    await expect(
+      poll.castKanoVote(poll_id, user('2'), [{ option_id: x!, functional: Like, dysfunctional: Dislike }])
+    ).rejects.toThrow('Poll is closed');
+
+    const res = await poll.getResults(poll_id);
+    expect(res.results.total_voters).toEqual(1);
+
+    // closing again is harmless and doesn't move the close time forward
+    await poll.closePoll(poll_id);
+    expect((await poll.getPoll(poll_id)).closes_on.toMillis()).toEqual(after.closes_on.toMillis());
   });
 });
 

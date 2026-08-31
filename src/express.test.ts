@@ -30,7 +30,15 @@ describe('express cookies', () => {
 
   beforeAll(async () => {
     const app = await initExpress({
-      config: { env: Env.Dev, port: 0, title: 't', origin: 'http://localhost', views: '', secrets: '' },
+      config: {
+        env: Env.Dev,
+        port: 0,
+        title: 't',
+        origin: 'http://localhost',
+        views: '',
+        secrets: '',
+        followAgeDays: 7,
+      },
       liquid: (_path, _opts, cb) => cb(null, 'ok'),
       JWT: fakeJWT,
     });
