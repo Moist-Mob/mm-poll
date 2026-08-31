@@ -4,14 +4,17 @@
 
 @layer components {
   /* ranked-choice ballot: one list; ranked rows sit above the divider */
+  /* no vertical padding + overflow-hidden: the first (ranked) row fills the
+     rounded top corners instead of leaving a dark strip above it */
   .ballot {
-    @apply my-0 pl-0 py-2 w-full list-none bg-zinc-900 bg-opacity-50 rounded-xl [&>li]:my-0 [&>li]:pl-0;
+    @apply my-0 p-0 w-full list-none overflow-hidden bg-zinc-900 bg-opacity-50 rounded-xl [&>li]:my-0 [&>li]:pl-0;
   }
   .ballot .row {
     @apply flex flex-row items-stretch gap-1 px-2 border-b border-zinc-100 border-opacity-10 last:border-b-0;
   }
+  /* same sky-700 as the "how you voted" box on the post-submit page */
   .ballot .row.chosen {
-    @apply bg-sky-700 bg-opacity-70;
+    @apply bg-sky-700;
   }
   .ballot .pick {
     @apply flex flex-row items-center gap-3 flex-1 min-h-[3rem] px-2 py-2 text-left text-zinc-200 rounded-md;
