@@ -15,7 +15,7 @@ import {
   KANO_ANSWER_EMOJI,
   KANO_ANSWER_LABELS,
 } from './kano.js';
-import { TwitchUser } from './jwt.js';
+import { TwitchUser } from './user.js';
 import { UserVisibleError } from './errors.js';
 import { Database, PollKind } from './db/types.js';
 

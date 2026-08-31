@@ -1,31 +1,27 @@
-import type { Request as ExpressRequest, RequestHandler, Application } from 'express';
+import type { RequestHandler, Application } from 'express';
 import express from 'express';
 import { nanoid } from 'nanoid';
-import { LRUCache } from 'lru-cache';
 
 import Debug from 'debug';
 
 import { PDeps } from '../deps.js';
-import { TwitchUser } from '../jwt.js';
+import { TwitchUser } from '../user.js';
 import { assertSchema, DunkOrSlam_uid, sendError } from '../util.js';
-import { clearUserCookie, setUserCookie } from '../express.js';
-
-const stateCache = new LRUCache({
-  max: 1000,
-  ttl: 5 * 60 * 1000,
-});
 
 export interface AuthFns {
   mount(app: Application, path: string): void;
   authRedirect: RequestHandler;
 }
 
+// only ever send users back to a local path; anything else falls back to home
+export const sanitizeReturnTo = (v: unknown): string =>
+  typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\') ? v : '/';
+
 export const initAuthRoutes = async ({
   config,
   secrets,
   apiClient,
-  JWT,
-}: PDeps<'config' | 'secrets' | 'apiClient' | 'JWT'>): Promise<AuthFns> => {
+}: PDeps<'config' | 'secrets' | 'apiClient'>): Promise<AuthFns> => {
   const debug = Debug('vote:auth');
   const router = express.Router();
 
@@ -38,35 +34,18 @@ export const initAuthRoutes = async ({
     return authUrl;
   };
 
+  // pages that need a logged-in user: pass through if we have one, otherwise
+  // run the oauth dance and come back to this same url
   const authRedirect: RequestHandler = (req, res, next) => {
-    const { user, authRedirect } = req.session;
-
-    if (user && authRedirect) {
-      debug('have user and redirect, attempting to return to', authRedirect.returnTo);
-      req.session.authRedirect = undefined;
-      res.redirect(authRedirect.returnTo);
-    } else if (user && !authRedirect) {
-      debug('have user and no redirect, passing through');
+    if (req.session.user) {
       next();
-    } else if (!user && !authRedirect) {
-      debug('no user, attempting login with redirect back to', req.path);
-      // attempt login
-      req.session.authRedirect = {
-        returnTo: req.path,
-      };
-      res.redirect(authUrl('login'));
-    } else if (!user && authRedirect) {
-      debug('no user, but redirect is set; clearing and sending to /');
-      // if we have redirect set but no user, login failed
-      // reset and redirect to /
-      req.session.authRedirect = undefined;
-      res.redirect('/');
-    } else {
-      next('impossiburu');
+      return;
     }
+    debug('no user, attempting login with redirect back to', req.originalUrl);
+    res.redirect(`${authUrl('login')}?returnTo=${encodeURIComponent(req.originalUrl)}`);
   };
 
-  const fetchTwitchUser = async (req: ExpressRequest, code: string): Promise<TwitchUser> => {
+  const fetchTwitchUser = async (code: string): Promise<TwitchUser> => {
     const url = new URL('https://id.twitch.tv/oauth2/token');
     const searchParams = new URLSearchParams();
     searchParams.set('client_id', twitch.app.clientId);
@@ -111,63 +90,74 @@ export const initAuthRoutes = async ({
   };
 
   router.get('/login', (req, res) => {
-    const state = nanoid(16);
-    stateCache.set(state, 1);
+    // a fresh state nonce and destination for this attempt, stored in the
+    // session: it survives server restarts (the store is on disk), and a
+    // retry or a second tab simply overwrites it
+    const oauth = { state: nanoid(16), returnTo: sanitizeReturnTo(req.query.returnTo) };
+    req.session.oauth = oauth;
+
     const twitchAuth = new URL('https://id.twitch.tv/oauth2/authorize');
     twitchAuth.searchParams.set('response_type', 'code');
     twitchAuth.searchParams.set('client_id', twitch.app.clientId);
     const callback = authUrl('callback');
     debug('login callback', callback);
     twitchAuth.searchParams.set('redirect_uri', callback);
-    twitchAuth.searchParams.set('state', state);
+    twitchAuth.searchParams.set('state', oauth.state);
     // twitchAuth.searchParams.set('scope', 'user:read:follows');
     res.redirect(twitchAuth.toString());
   });
 
   router.get('/logout', (req, res) => {
-    clearUserCookie(res);
     req.session.destroy(() => {
       res.redirect('/');
     });
   });
 
-  router.get(
-    '/callback',
-    async (req, res, next) => {
-      debug('callback');
-      const code = req.query.code as string;
-      if (typeof code !== 'string' || !code) {
-        debug('invalid oauth code', req.query);
-        const error_description = req.query.error_description;
-        const msg = typeof error_description === 'string' ? error_description : 'oauth failure';
-        sendError(res, msg);
-        return;
-      }
-      const state = req.query.state as string;
-      if (typeof state !== 'string' || !stateCache.has(state)) {
-        debug('invalid oauth state');
-        sendError(res, 'oauth failure');
-        return;
-      }
-      stateCache.delete(state);
+  router.get('/callback', async (req, res) => {
+    debug('callback');
+    // the state we issued is one-shot: consume it no matter how this goes
+    const oauth = req.session.oauth;
+    req.session.oauth = undefined;
 
-      try {
-        const user = await fetchTwitchUser(req, code);
-        req.session.user = user;
-        // issue the JWT cookie right away rather than on the next request, so
-        // login doesn't depend on the in-memory session surviving the redirect
-        setUserCookie(JWT, req, res, user);
-        next();
-      } catch (err) {
-        debug('oauth callback failed', err);
-        next('oauth failure');
-      }
-    },
-    authRedirect,
-    (req, res) => {
-      res.redirect('/');
+    if (!oauth) {
+      // no login in flight: a direct visit, or the session cookie didn't
+      // come back (e.g. an in-app browser blocking cookies)
+      debug('callback without an oauth flow in the session');
+      sendError(res, 'Login failed — please try the link again');
+      return;
     }
-  );
+
+    const code = req.query.code;
+    if (typeof code !== 'string' || !code) {
+      debug('invalid oauth code', req.query);
+      const error_description = req.query.error_description;
+      const msg = typeof error_description === 'string' ? error_description : 'oauth failure';
+      sendError(res, msg);
+      return;
+    }
+
+    if (req.query.state !== oauth.state) {
+      // a stale attempt (an older tab, a replay); don't consume the code —
+      // send them where they were headed, which restarts login if needed
+      debug('oauth state mismatch');
+      res.redirect(oauth.returnTo);
+      return;
+    }
+
+    try {
+      const user = await fetchTwitchUser(code);
+      // fresh session id for the freshly authenticated user (fixation)
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate(err => (err ? reject(err) : resolve()));
+      });
+      req.session.user = user;
+      req.session.localId = nanoid();
+      res.redirect(oauth.returnTo);
+    } catch (err) {
+      debug('oauth callback failed', err);
+      sendError(res, 'oauth failure');
+    }
+  });
 
   return {
     mount: (app, path) => {

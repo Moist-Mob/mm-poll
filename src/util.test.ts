@@ -1,5 +1,5 @@
 import { DAY_MS, followAgeText, followRuleText, isEligible } from './util.js';
-import { TwitchUser } from './jwt.js';
+import { TwitchUser } from './user.js';
 
 describe('isEligible', () => {
   const user = (followed_on: number, user_id = '1'): TwitchUser => ({ login: 'u', user_id, followed_on });

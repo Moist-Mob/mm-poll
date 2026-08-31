@@ -1,0 +1,18 @@
+{% comment %}
+  one row of answer pills for a kano question. Expects: name (the form field
+  name, e.g. answers[o12][f]) and scale (KANO_SCALE). The radio is visually
+  hidden but still focusable, so keyboard use and "required" keep working.
+{% endcomment %}
+<div class="flex flex-row flex-wrap gap-2">
+  {% for a in scale %}
+    <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors hover:bg-sky-900 has-[:focus-visible]:bg-sky-900 has-[:checked]:bg-sky-600 has-[:checked]:text-white">
+      <input
+        class="sr-only"
+        type="radio"
+        name="{{ name }}"
+        value="{{ a.value | escape }}"
+        required>
+      <span aria-hidden="true">{{ a.emoji }}</span> {{ a.label | escape }}
+    </label>
+  {% endfor %}
+</div>

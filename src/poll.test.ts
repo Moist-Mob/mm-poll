@@ -1,31 +1,16 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-
 import createSqlite3 from 'better-sqlite3';
 import { Kysely, SqliteDialect, sql } from 'kysely';
-import { type Migration, type MigrationProvider, Migrator } from 'kysely/migration';
+import { Migrator } from 'kysely/migration';
 
-import { initDb, migrationFolder } from './db.js';
+import { initDb } from './db.js';
 import { initPoll, PollFns } from './poll.js';
 import { Config, Env } from './config.js';
-import { TwitchUser } from './jwt.js';
+import { TwitchUser } from './user.js';
 import { KanoAnswer } from './kano.js';
 import { UserVisibleError } from './errors.js';
+import { testMigrationProvider } from './testing/migrations.js';
 
 const { Like, Expect, Neutral, Tolerate, Dislike } = KanoAnswer;
-
-// kysely's FileMigrationProvider imports with node's loader, which can't map
-// the `.js` specifiers in the .ts migrations; import them via vitest instead
-const provider: MigrationProvider = {
-  async getMigrations() {
-    const files = (await fs.readdir(migrationFolder)).filter(f => f.endsWith('.ts')).sort();
-    const migrations: Record<string, Migration> = {};
-    for (const file of files) {
-      migrations[path.basename(file, '.ts')] = await import(path.join(migrationFolder, file));
-    }
-    return migrations;
-  },
-};
 
 // followed 30 days ago -> eligible
 const user = (id: string): TwitchUser => ({
@@ -48,7 +33,7 @@ describe('poll (in-memory db)', () => {
   let poll: PollFns;
 
   beforeEach(async () => {
-    const kysely = await initDb(undefined, provider);
+    const kysely = await initDb(undefined, testMigrationProvider);
     poll = initPoll({ kysely, config });
   });
 
@@ -229,12 +214,12 @@ describe('poll (in-memory db)', () => {
   });
 });
 
-describe('kano migration', () => {
+describe('migrations', () => {
   it('migrates up and down cleanly', async () => {
     const sqlite = createSqlite3(':memory:');
     sqlite.exec('PRAGMA foreign_keys = ON;');
     const db = new Kysely<any>({ dialect: new SqliteDialect({ database: sqlite }) });
-    const migrator = new Migrator({ db, provider });
+    const migrator = new Migrator({ db, provider: testMigrationProvider });
 
     const columns = async (table: string): Promise<string[]> => {
       const { rows } = await sql<{ name: string }>`select name from pragma_table_info(${sql.lit(table)})`.execute(db);
@@ -249,6 +234,7 @@ describe('kano migration', () => {
     expect(up.error).toBeUndefined();
     expect(await columns('poll')).toContain('kind');
     expect(await tables()).toContain('kano_vote');
+    expect(await tables()).toContain('session');
 
     // existing rows get the default kind
     await sql`insert into poll (title, created_on, closes_on) values ('old', 0, 0)`.execute(db);
@@ -258,9 +244,15 @@ describe('kano migration', () => {
       sql`insert into poll (kind, title, created_on, closes_on) values ('nope', 'x', 0, 0)`.execute(db)
     ).rejects.toThrow();
 
-    const down = await migrator.migrateDown();
-    expect(down.error).toBeUndefined();
-    expect(down.results?.map(r => r.migrationName)).toEqual(['2026-08-31_001_kano_polls']);
+    // migrateDown steps back one migration at a time
+    const downSession = await migrator.migrateDown();
+    expect(downSession.error).toBeUndefined();
+    expect(downSession.results?.map(r => r.migrationName)).toEqual(['2026-08-31_002_session']);
+    expect(await tables()).not.toContain('session');
+
+    const downKano = await migrator.migrateDown();
+    expect(downKano.error).toBeUndefined();
+    expect(downKano.results?.map(r => r.migrationName)).toEqual(['2026-08-31_001_kano_polls']);
     expect(await columns('poll')).not.toContain('kind');
     expect(await tables()).not.toContain('kano_vote');
 

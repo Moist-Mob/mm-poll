@@ -1,57 +1,35 @@
 import { resolve } from 'node:path';
 
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express } from 'express';
 import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
 import expressSession from 'express-session';
-import createMemoryStore from 'memorystore';
 import Debug from 'debug';
 import { nanoid } from 'nanoid';
 
 import { Env } from './config.js';
 import { ExpressContext, PDeps } from './deps.js';
-import { JWT, TwitchUser } from './jwt.js';
-import { admins } from './util.js';
-
-// sessions live in memory, so the logged-in user is also stashed in a signed
-// JWT cookie; the middleware below recovers the session from it as needed
-export const USER_COOKIE = 'twitch-user';
-
-export const setUserCookie = (JWT: JWT, req: Request, res: Response, user: TwitchUser): void => {
-  // drop any Set-Cookie for this name already queued on the response (e.g. a
-  // clear issued by the session middleware before login completed)
-  const pending = res.getHeader('Set-Cookie');
-  if (pending !== undefined) {
-    const kept = (Array.isArray(pending) ? pending : [String(pending)]).filter(c => !c.startsWith(`${USER_COOKIE}=`));
-    res.setHeader('Set-Cookie', kept);
-  }
-
-  const [cookie, expires] = JWT.signUser(user);
-  res.cookie(USER_COOKIE, cookie, {
-    expires: expires.toJSDate(),
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: req.secure,
-  });
-};
-
-export const clearUserCookie = (res: Response): void => {
-  res.clearCookie(USER_COOKIE);
-};
+import { type OauthFlow, type TwitchUser } from './user.js';
+import { SqliteSessionStore } from './session-store.js';
 
 declare module 'express-session' {
   interface SessionData {
-    authRedirect?: {
-      returnTo: string;
-    };
+    // per-session CSRF token, embedded in forms and checked on POST
     localId: string;
     user?: TwitchUser;
-    admin: boolean;
+    // an oauth login in flight (see routers/auth.ts)
+    oauth?: OauthFlow;
   }
 }
 
-export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liquid' | 'JWT'>): Promise<Express> => {
+export const initExpress = async ({
+  config,
+  liquid,
+  secrets,
+  kysely,
+}: PDeps<'config' | 'liquid' | 'secrets' | 'kysely'>): Promise<Express> => {
   const debug = Debug('vote:express');
+
+  const { session: sessionSecrets } = await secrets.load();
 
   const app = express();
   app.locals.site = {
@@ -64,13 +42,8 @@ export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liq
   // X-Forwarded-* headers so `req.secure` (and thus cookie flags) is right
   app.set('trust proxy', 1);
 
-  {
-    // we're not using sessions for anything other than nonces...
-    const MemoryStore = createMemoryStore(expressSession);
-    const store = new MemoryStore({
-      checkPeriod: 86400_000, // prune expired entries every 24h
-    });
-    const session = expressSession({
+  app.use(
+    expressSession({
       cookie: {
         maxAge: 7 * 86400_000,
         httpOnly: true,
@@ -82,35 +55,20 @@ export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liq
         // plain http for local runs
         secure: 'auto',
       },
-      store,
+      store: new SqliteSessionStore(kysely),
       resave: false,
-      secret: 'hi',
+      secret: sessionSecrets.secret.unwrap(),
       saveUninitialized: false,
-    });
-    app.use(session);
-  }
-  app.use(cookieParser());
+    })
+  );
 
   app.use((req, res, next) => {
-    if (!Object.prototype.hasOwnProperty.call(req.session, 'localId')) {
+    // per-session CSRF token. Only logged-in sessions need one (every POST
+    // requires a user), so anonymous visits never materialize a session row.
+    // The login callback mints it; this is the backstop.
+    if (req.session.user && !req.session.localId) {
       req.session.localId = nanoid();
     }
-
-    // we're only using memory for session storage, so we stash the user
-    // info in a JWT in a cookie for recovery
-    const hasUserCookie = Object.prototype.hasOwnProperty.call(req.cookies, USER_COOKIE);
-    const user = req.session.user ?? JWT.verifyUser(req.cookies[USER_COOKIE]);
-    req.session.user = user;
-    req.session.admin = user && user.user_id in admins;
-
-    if (!user) {
-      // only bother clearing a cookie that's actually there (and invalid)
-      if (hasUserCookie) clearUserCookie(res);
-    } else if (!hasUserCookie) {
-      debug('re-issuing user cookie for', user.login);
-      setUserCookie(JWT, req, res, user);
-    }
-
     next();
   });
 
@@ -130,9 +88,6 @@ export const initExpress = async ({ config, liquid, JWT }: PDeps<'config' | 'liq
 
   app.engine('liquid', liquid);
   app.set('view engine', 'liquid');
-
-  // const favicon = require('serve-favicon');
-  // app.use(favicon(PATH.join(__dirname, '..', 'static', 'favicon.ico')));
 
   return app;
 };

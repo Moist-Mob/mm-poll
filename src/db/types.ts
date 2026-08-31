@@ -1,4 +1,4 @@
-import type { Generated, Insertable, Selectable, Updateable } from 'kysely';
+import type { Generated } from 'kysely';
 
 export type PollKind = 'irv' | 'kano';
 
@@ -32,9 +32,17 @@ export interface KanoVoteTable {
   dysfunctional: number;
 }
 
+// express-session storage; `expires` is epoch ms, `data` the JSON session blob
+export interface SessionTable {
+  sid: string;
+  expires: number;
+  data: string;
+}
+
 export interface Database {
   poll: PollTable;
   option: OptionTable;
   vote: VoteTable;
   kano_vote: KanoVoteTable;
+  session: SessionTable;
 }

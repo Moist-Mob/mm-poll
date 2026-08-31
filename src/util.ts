@@ -3,7 +3,7 @@ import { Value } from '@sinclair/typebox/value';
 import type { Request, Response } from 'express';
 import humanizeDuration from 'humanize-duration';
 
-import type { TwitchUser } from './jwt.js';
+import type { TwitchUser } from './user.js';
 
 export const DunkOrSlam_uid = '241636';
 
@@ -11,6 +11,9 @@ export const admins = Object.assign(Object.create(null), {
   '241636': true, // dunkorslam
   '25022069': true, // myndzi
 });
+
+// derived from the logged-in user, never stored
+export const isAdmin = (user: TwitchUser | undefined): boolean => user !== undefined && user.user_id in admins;
 
 export const assertSchema = <T extends TSchema>(schema: T, data: unknown): Static<T> => {
   if (Value.Check(schema, data)) return data;
@@ -52,7 +55,7 @@ export type Context = {
 
 export const context = <T = {}>(req: Request, extra: T = {} as T): Context & T => ({
   user: req.session.user,
-  admin: req.session.admin,
+  admin: isAdmin(req.session.user),
   localId: req.session.localId,
   ...extra,
 });

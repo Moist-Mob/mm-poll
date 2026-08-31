@@ -21,12 +21,12 @@ const TwitchSecrets = T.Object({
   user: UserCredentials,
 });
 
-const JWTSecrets = T.Object({
-  secret: TSecret('jwt.secret', T.String()),
+const SessionSecrets = T.Object({
+  secret: TSecret('session.secret', T.String()),
 });
 export const Secrets = T.Object({
   twitch: TwitchSecrets,
-  jwt: JWTSecrets,
+  session: SessionSecrets,
 });
 
 export type AppCredentials = StaticDecode<typeof AppCredentials>;

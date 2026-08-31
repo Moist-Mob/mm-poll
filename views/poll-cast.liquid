@@ -25,21 +25,28 @@
       name="poll_id"
       value="{{ poll.poll_id | escape }}">
 
-    <ol id="ballot" class="ballot">
-      <li class="divider" data-count="0" aria-hidden="true">
+    {% comment %}
+      row / chosen / pick / badge / arrows / up / down / divider / divider-text
+      are hooks for the script below, not styles. The script toggles "chosen"
+      on a row; the group-[.chosen] variants style the row's children from it.
+      No vertical padding + overflow-hidden so the first ranked row fills the
+      rounded top corners.
+    {% endcomment %}
+    <ol id="ballot" class="my-0 p-0 w-full list-none overflow-hidden bg-zinc-900/50 rounded-xl [&>li]:my-0">
+      <li class="divider flex items-center px-4 py-2 text-sm text-zinc-300/80 border-b-2 border-dashed border-zinc-100/25" data-count="0" aria-hidden="true">
         <span class="divider-text"></span>
       </li>
       {% for option in poll.options %}
-        <li class="row" data-option-id="{{ option.option_id | escape }}">
-          <button type="button" class="pick" aria-pressed="false">
-            <span class="badge" aria-hidden="true"></span>
+        <li class="row group flex flex-row items-stretch gap-1 px-2 border-b border-zinc-100/10 last:border-b-0 [&.chosen]:bg-sky-700" data-option-id="{{ option.option_id | escape }}">
+          <button type="button" class="pick flex flex-row items-center gap-3 flex-1 min-h-[3rem] px-2 py-2 text-left text-zinc-200 rounded-md group-[:not(.chosen)]:hover:bg-zinc-100/10" aria-pressed="false">
+            <span class="badge inline-flex items-center justify-center shrink-0 w-7 h-7 rounded-full border-2 border-zinc-400/60 text-sm font-bold group-[.chosen]:bg-orange-500 group-[.chosen]:border-orange-500 group-[.chosen]:text-white" aria-hidden="true"></span>
             <span class="name">{{ option.name | escape }}</span>
           </button>
-          <span class="arrows">
-            <button type="button" class="up" aria-label="Move {{ option.name | escape }} up" disabled>
+          <span class="arrows flex flex-row items-center gap-1 group-[:not(.chosen)]:hidden">
+            <button type="button" class="up flex items-center justify-center w-10 min-h-[2.75rem] rounded-md text-zinc-200 hover:bg-sky-900 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent" aria-label="Move {{ option.name | escape }} up" disabled>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5" aria-hidden="true"><path fill-rule="evenodd" d="M14.77 12.79a.75.75 0 0 1-1.06-.02L10 8.832 6.29 12.77a.75.75 0 1 1-1.08-1.04l4.25-4.5a.75.75 0 0 1 1.08 0l4.25 4.5a.75.75 0 0 1-.02 1.06Z" clip-rule="evenodd" /></svg>
             </button>
-            <button type="button" class="down" aria-label="Move {{ option.name | escape }} down" disabled>
+            <button type="button" class="down flex items-center justify-center w-10 min-h-[2.75rem] rounded-md text-zinc-200 hover:bg-sky-900 hover:text-white disabled:opacity-25 disabled:hover:bg-transparent" aria-label="Move {{ option.name | escape }} down" disabled>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" /></svg>
             </button>
           </span>

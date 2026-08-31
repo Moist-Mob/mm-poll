@@ -40,7 +40,7 @@
 
           {% if entry.responses > 0 %}
             <div
-              class="flex flex-row w-full h-7 mt-1 gap-[2px] p-[2px] rounded-md bg-sky-900 text-xs font-bold text-zinc-50 [&>div]:flex [&>div]:items-center [&>div]:justify-center [&>div]:overflow-hidden [&>div]:rounded-sm"
+              class="flex flex-row w-full h-7 mt-1 gap-[2px] p-[2px] rounded-md bg-sky-900 text-xs font-bold text-zinc-50 [&>div]:flex [&>div]:items-center [&>div]:justify-center [&>div]:overflow-hidden [&>div]:rounded"
               role="img"
               aria-label="{{ want }}% want it ({{ strong_want }}% strongly), {{ meh }}% don't mind, {{ reject }}% don't want it ({{ strong_reject }}% strongly), {{ unclear }}% unclear">
               {% if entry.intensity.strong_want > 0 %}

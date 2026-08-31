@@ -31,38 +31,21 @@
       <fieldset class="flex flex-col gap-3 px-6 py-4 my-0 border-0 text-zinc-200 bg-sky-700 rounded-xl">
         <div class="text-lg font-bold text-zinc-100">{{ option.name | escape }}</div>
 
+        {% capture f_name %}answers[o{{ option.option_id | escape }}][f]{% endcapture %}
+        {% capture d_name %}answers[o{{ option.option_id | escape }}][d]{% endcapture %}
+
         <div>
           <p class="my-1">How would you feel if we <b>had</b> this?</p>
-          <div class="flex flex-row flex-wrap gap-2">
-            {% for a in scale %}
-              <label class="scale-option">
-                <input
-                  class="sr-only"
-                  type="radio"
-                  name="answers[o{{ option.option_id | escape }}][f]"
-                  value="{{ a.value | escape }}"
-                  required>
-                <span aria-hidden="true">{{ a.emoji }}</span> {{ a.label | escape }}
-              </label>
-            {% endfor %}
-          </div>
+          {% render "kano-scale"
+            , name: f_name
+            , scale: scale %}
         </div>
 
         <div>
           <p class="my-1">How would you feel if we <b>did not</b> have this?</p>
-          <div class="flex flex-row flex-wrap gap-2">
-            {% for a in scale %}
-              <label class="scale-option">
-                <input
-                  class="sr-only"
-                  type="radio"
-                  name="answers[o{{ option.option_id | escape }}][d]"
-                  value="{{ a.value | escape }}"
-                  required>
-                <span aria-hidden="true">{{ a.emoji }}</span> {{ a.label | escape }}
-              </label>
-            {% endfor %}
-          </div>
+          {% render "kano-scale"
+            , name: d_name
+            , scale: scale %}
         </div>
       </fieldset>
     {% endfor %}

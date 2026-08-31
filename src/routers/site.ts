@@ -1,12 +1,22 @@
 import express from 'express';
-import type { Request, RequestHandler, Application } from 'express';
-import { nanoid } from 'nanoid';
+import type { RequestHandler, Application } from 'express';
 
 import { Type as T } from '@sinclair/typebox';
 
 import { type PDeps } from '../deps.js';
-import { type TwitchUser } from '../jwt.js';
-import { asInt, assertInt, assertSchema, followAgeText, isEligible, param, sendError, shd, shuffle } from '../util.js';
+import {
+  asInt,
+  assertInt,
+  assertSchema,
+  context,
+  followAgeText,
+  isAdmin,
+  isEligible,
+  param,
+  sendError,
+  shd,
+  shuffle,
+} from '../util.js';
 import { UserVisibleError } from '../errors.js';
 import { KANO_SCALE, SMALL_SAMPLE } from '../kano.js';
 import { type KanoUserAnswer } from '../poll.js';
@@ -33,19 +43,6 @@ export interface SiteFns {
 export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'authRedirect' | 'config'>): SiteFns => {
   const router = express.Router();
 
-  type Context = {
-    user?: TwitchUser;
-    admin?: boolean;
-    localId?: string;
-  };
-
-  const context = <T = {}>(req: Request, extra: T = {} as T): Context & T => ({
-    user: req.session.user,
-    admin: req.session.admin,
-    localId: req.session.localId,
-    ...extra,
-  });
-
   router.get('/', (req, res) => {
     res.render('hello', context(req));
   });
@@ -55,7 +52,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
   });
 
   router.get('/create', authRedirect, (req, res) => {
-    if (!req.session.admin) {
+    if (!isAdmin(req.session.user)) {
       sendError(res, 'Access denied');
       return;
     }
@@ -152,8 +149,8 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
       sendError(res, 'Invalid submission');
       return;
     }
-    // we've used this token, make a new one
-    req.session.localId = nanoid();
+    // the token is per-session and deliberately not rotated on use: rotation
+    // would invalidate the forms already open in every other tab
 
     const user = req.session.user;
     if (!user) {
@@ -231,7 +228,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
   });
 
   router.post('/poll/:poll_id/close', validatePost, async (req, res) => {
-    if (!req.session.admin) {
+    if (!isAdmin(req.session.user)) {
       console.error('refusing to close poll: non-admin');
       sendError(res, 'Access denied');
       return;
@@ -252,7 +249,7 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
   });
 
   router.post('/create', validatePost, async (req, res) => {
-    if (!req.session.admin) {
+    if (!isAdmin(req.session.user)) {
       console.error('refusing to create poll: non-admin');
       sendError(res, 'Access denied');
       return;
