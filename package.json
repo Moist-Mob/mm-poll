@@ -6,7 +6,7 @@
     "test": "vitest run",
     "build:css": "tailwindcss -i src/tailwind/style.css -o public/css/style.css",
     "watch:css": "pnpm run build:css -- --watch",
-    "build:node": "tsc",
+    "build:node": "tsc -p tsconfig.build.json",
     "watch:node": "tsx --watch src/index.ts",
     "build": "npx vitest run && pnpm run build:css && pnpm run build:node"
   },

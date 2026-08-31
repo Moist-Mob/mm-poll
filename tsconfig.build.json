@@ -1,0 +1,5 @@
+{
+  // emit only the app: tests run from src via vitest and don't belong in dist/
+  "extends": "./tsconfig.json",
+  "exclude": ["src/**/*.test.ts", "src/testing"]
+}
