@@ -1,5 +1,5 @@
 import express from 'express';
-import type { RequestHandler, Application } from 'express';
+import type { Application } from 'express';
 
 import { Type as T } from '@sinclair/typebox';
 
@@ -16,6 +16,7 @@ import {
   sendError,
   shd,
   shuffle,
+  validatePost,
 } from '../util.js';
 import { UserVisibleError } from '../errors.js';
 import { KANO_SCALE, SMALL_SAMPLE } from '../kano.js';
@@ -138,29 +139,6 @@ export const initSiteRoutes = ({ poll, authRedirect, config }: PDeps<'poll' | 'a
       res.status(404).render('error', context(req, { error: 'Poll not found' }));
     }
   });
-
-  // check csrf-token and user
-  const validatePost: RequestHandler = (req, res, next) => {
-    const sessionToken = req.session.localId;
-    const formToken = req.body['csrf-token'];
-
-    if (!formToken || !sessionToken || formToken !== sessionToken) {
-      console.error('bad csrf token');
-      sendError(res, 'Invalid submission');
-      return;
-    }
-    // the token is per-session and deliberately not rotated on use: rotation
-    // would invalidate the forms already open in every other tab
-
-    const user = req.session.user;
-    if (!user) {
-      console.error('no user');
-      sendError(res, 'Invalid submission');
-      return;
-    }
-
-    next();
-  };
 
   router.post('/vote', validatePost, async (req, res) => {
     const user = req.session.user!;

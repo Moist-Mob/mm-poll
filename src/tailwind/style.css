@@ -1,3 +1,135 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * accessible-autocomplete renders its own DOM, so utilities can't be put on
+ * its elements; this is the one component styled here, scoped to its
+ * container. The structural rules (wrapper positioning, menu overlay and
+ * visibility, hit-testing) mirror the library's own stylesheet; the skin is
+ * ours, via theme().
+ *
+ * Deliberately NOT inside @layer components: tailwind purges layered rules
+ * whose classes never appear in the content scan, and these class names only
+ * exist at runtime, in DOM the library builds.
+ */
+
+/* positioning context only — a background here peeks out around the input's
+   rounded corners */
+#autocomplete-container .autocomplete__wrapper {
+  position: relative;
+}
+
+#autocomplete-container .autocomplete__input,
+#autocomplete-container .autocomplete__hint {
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 1px solid theme(colors.zinc.300);
+  border-radius: theme(borderRadius.DEFAULT);
+  padding: theme(spacing.2) theme(spacing.3);
+  font: inherit;
+  line-height: theme(lineHeight.tight);
+}
+
+/* the input carries the white "input look" itself. (The library's inline
+   completion hint would sit behind a transparent input, but with
+   autoselect off no hint is ever rendered, so opaque is fine.) */
+#autocomplete-container .autocomplete__input {
+  position: relative;
+  background-color: theme(colors.white);
+  box-shadow: theme(boxShadow.DEFAULT);
+  color: theme(colors.zinc.900);
+}
+
+#autocomplete-container .autocomplete__input:focus {
+  outline: none;
+}
+
+/* while the dropdown is open, the input and menu read as one connected
+   control: square the corners where they meet */
+#autocomplete-container .autocomplete__wrapper:has(.autocomplete__menu--visible) .autocomplete__input {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#autocomplete-container .autocomplete__hint {
+  position: absolute;
+  color: theme(colors.zinc.400);
+}
+
+#autocomplete-container .autocomplete__menu {
+  margin: 0;
+  padding: theme(spacing.1);
+  width: 100%;
+  max-height: 20rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  background-color: theme(colors.sky.800);
+  color: theme(colors.zinc.100);
+  border-radius: 0 0 theme(borderRadius.lg) theme(borderRadius.lg);
+  box-shadow: theme(boxShadow.lg);
+}
+
+#autocomplete-container .autocomplete__menu--overlay {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+}
+
+#autocomplete-container .autocomplete__menu--visible {
+  display: block;
+}
+
+#autocomplete-container .autocomplete__menu--hidden {
+  display: none;
+}
+
+#autocomplete-container .autocomplete__option {
+  display: block;
+  position: relative;
+  margin: 0;
+  padding: theme(spacing.1) theme(spacing.3);
+  list-style: none;
+  cursor: pointer;
+  border-radius: theme(borderRadius.md);
+}
+
+/* clicks must land on the option itself, not the box art inside it */
+#autocomplete-container .autocomplete__option > * {
+  pointer-events: none;
+}
+
+#autocomplete-container .autocomplete__option--focused,
+#autocomplete-container .autocomplete__option:hover {
+  background-color: theme(colors.sky.600);
+  color: theme(colors.white);
+  outline: none;
+}
+
+#autocomplete-container .autocomplete__option--no-results {
+  cursor: default;
+  color: theme(colors.zinc.300);
+}
+
+/* carried over from the library's stylesheet: stay legible in Windows
+   high-contrast / forced-colors modes */
+@media (forced-colors: active) {
+  #autocomplete-container .autocomplete__menu {
+    border: 1px solid FieldText;
+    background-color: Field;
+  }
+  #autocomplete-container .autocomplete__option {
+    background-color: Field;
+    color: FieldText;
+  }
+  #autocomplete-container .autocomplete__option--focused,
+  #autocomplete-container .autocomplete__option:hover {
+    background-color: SelectedItem;
+    color: SelectedItemText;
+    forced-color-adjust: none;
+  }
+}

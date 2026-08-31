@@ -1,6 +1,6 @@
 import { Static, TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import type { Request, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import humanizeDuration from 'humanize-duration';
 
 import type { TwitchUser } from './user.js';
@@ -62,6 +62,28 @@ export const context = <T = {}>(req: Request, extra: T = {} as T): Context & T =
 
 export const sendError = (res: Response, error: string) => {
   res.redirect(`/error?msg=${encodeURIComponent(error)}`);
+};
+
+// check csrf-token and user on form POSTs
+export const validatePost: RequestHandler = (req, res, next) => {
+  const sessionToken = req.session.localId;
+  const formToken = req.body['csrf-token'];
+
+  if (!formToken || !sessionToken || formToken !== sessionToken) {
+    console.error('bad csrf token');
+    sendError(res, 'Invalid submission');
+    return;
+  }
+  // the token is per-session and deliberately not rotated on use: rotation
+  // would invalidate the forms already open in every other tab
+
+  if (!req.session.user) {
+    console.error('no user');
+    sendError(res, 'Invalid submission');
+    return;
+  }
+
+  next();
 };
 
 export const shd = humanizeDuration.humanizer({

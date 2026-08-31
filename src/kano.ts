@@ -243,7 +243,7 @@ export const verdictFor = ({ shares, n, intervals, small_sample, split_close }: 
   const leader = want >= reject ? 'wanting it' : 'not wanting it';
   const range = (i: KanoInterval) => `${pct(i.low)}–${pct(i.high)}`;
   const closeness = small_sample
-    ? `Only ${n} ${n === 1 ? 'response' : 'responses'} — too few to draw conclusions (the real share wanting it could be anywhere from ${range(intervals.want)}, not wanting it ${range(intervals.reject)}).`
+    ? `Only ${n} ${n === 1 ? 'response' : 'responses'}: too few to draw conclusions (the real share wanting it could be anywhere from ${range(intervals.want)}, not wanting it ${range(intervals.reject)}).`
     : split_close
       ? `The gap between the two sides (${Math.round(gap * 100)} points) is within the margin of error, so treat them as even.`
       : `The side ${leader} leads by ${Math.round(gap * 100)} points, well beyond the margin of error.`;
@@ -268,7 +268,7 @@ export const verdictFor = ({ shares, n, intervals, small_sample, split_close }: 
         headline: "Most don't care; a minority object",
         detail: small_sample
           ? `${split} ${closeness}`
-          : `${split} The objectors are about ${people(reject, n)} out of ${n} — real, but not the crowd.`,
+          : `${split} The objectors are about ${people(reject, n)} out of ${n}: real, but not the crowd.`,
       };
     }
     return {

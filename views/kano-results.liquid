@@ -65,10 +65,10 @@
 
             <div class="flex flex-row flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-zinc-300">
               <span>
-                Overall: <b class="text-zinc-100">{{ entry.category_plain | escape }}</b> — {{ entry.category_meaning | escape }}
+                Overall: <b class="text-zinc-100">{{ entry.category_plain | escape }}</b> ({{ entry.category_meaning | escape }})
                 {% unless entry.category_clear or entry.small_sample %}
                   {% if entry.category_runner_up %}
-                    <span class="text-zinc-200">— close call with {{ entry.category_runner_up_plain | escape }}</span>
+                    <span class="text-zinc-200">(close call with {{ entry.category_runner_up_plain | escape }})</span>
                   {% endif %}
                 {% endunless %}
               </span>
@@ -88,9 +88,9 @@
     <summary class="cursor-pointer">How to read this</summary>
     <ul>
       <li>Everyone answered two questions per item: how they'd feel <i>with</i> it and how they'd feel <i>without</i> it. Each pair of answers puts that person in one bucket: <b>want it</b> (they'd be happier with it or miss it if gone), <b>don't mind</b>, <b>don't want it</b> (they'd rather it were gone), or <b>unclear</b> (contradictory answers).</li>
-      <li>The <b>±</b> figure is the margin of error at this many responses (95% confidence, Wilson score interval). If the "want it" and "don't want it" ranges overlap, the poll can't tell them apart — the verdict says so. Under {{ small_sample }} responses no margin is shown, because at that size the real shares could be almost anything.</li>
-      <li>The vivid ends of the bar are people who felt <b>strongly</b> — 😍 to one question <i>and</i> 😡 to the other. The dimmer parts are one-sided: they'd enjoy it but not miss it, or miss it but not be excited by it (and likewise for not wanting it). Two long vivid ends means a genuinely polarized audience; long dim ends means a split that nobody feels strongly about.</li>
-      <li><b>Overall</b> sums up the most common kind of answer for the item. The first three all count as "want it" on the bar — they differ in <i>how</i> it's wanted: <i>Taken for granted</i> — not exciting to have, but missed if it went; <i>Wanted</i> — happier with it, unhappy without it; <i>Bonus</i> — enjoyed when present, not missed when gone. Then <i>Doesn't matter</i> — few people care either way; <i>Better without</i> — people would rather not have it; <i>Mixed signals</i> — answers contradict each other. "Close call" means the runner-up was within noise of the winner.</li>
+      <li>The <b>±</b> figure is the margin of error at this many responses (95% confidence, Wilson score interval). If the "want it" and "don't want it" ranges overlap, the poll can't tell them apart, and the verdict says so. Under {{ small_sample }} responses no margin is shown, because at that size the real shares could be almost anything.</li>
+      <li>The vivid ends of the bar are people who felt <b>strongly</b>: 😍 to one question <i>and</i> 😡 to the other. The dimmer parts are one-sided: they'd enjoy it but not miss it, or miss it but not be excited by it (and likewise for not wanting it). Two long vivid ends means a genuinely polarized audience; long dim ends means a split that nobody feels strongly about.</li>
+      <li><b>Overall</b> sums up the most common kind of answer for the item. The first three all count as "want it" on the bar; they differ in <i>how</i> it's wanted: <i>Taken for granted</i> (not exciting to have, but missed if it went); <i>Wanted</i> (happier with it, unhappy without it); <i>Bonus</i> (enjoyed when present, not missed when gone). Then <i>Doesn't matter</i> (few people care either way); <i>Better without</i> (people would rather not have it); <i>Mixed signals</i> (answers contradict each other). "Close call" means the runner-up was within noise of the winner.</li>
       <li>Raw counts per item (must-be / performance / attractive / indifferent / reverse / questionable):
         {% for entry in results.features %}
           <br><span class="text-zinc-400">{{ entry.name | escape }}: M {{ entry.counts.M }} · O {{ entry.counts.O }} · A {{ entry.counts.A }} · I {{ entry.counts.I }} · R {{ entry.counts.R }} · Q {{ entry.counts.Q }}</span>

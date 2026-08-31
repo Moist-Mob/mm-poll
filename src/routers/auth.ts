@@ -123,7 +123,7 @@ export const initAuthRoutes = async ({
       // no login in flight: a direct visit, or the session cookie didn't
       // come back (e.g. an in-app browser blocking cookies)
       debug('callback without an oauth flow in the session');
-      sendError(res, 'Login failed — please try the link again');
+      sendError(res, 'Login failed. Please try the link again.');
       return;
     }
 
@@ -137,8 +137,8 @@ export const initAuthRoutes = async ({
     }
 
     if (req.query.state !== oauth.state) {
-      // a stale attempt (an older tab, a replay); don't consume the code —
-      // send them where they were headed, which restarts login if needed
+      // a stale attempt (an older tab, a replay); don't consume the code.
+      // Send them where they were headed, which restarts login if needed
       debug('oauth state mismatch');
       res.redirect(oauth.returnTo);
       return;

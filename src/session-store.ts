@@ -31,7 +31,7 @@ const debug = Debug('vote:session');
 
 // express-session's storage contract on our own sqlite, via kysely. The one
 // rule: `expires` is epoch milliseconds and is only ever compared to epoch
-// milliseconds — sqlite orders mismatched storage classes by class (INTEGER
+// milliseconds, because sqlite orders mismatched storage classes by class (INTEGER
 // sorts before TEXT unconditionally), which is what broke the store this
 // replaces: it wrote integers and compared them against datetime() text.
 export class SqliteSessionStore extends Store {

@@ -278,6 +278,183 @@ describe('create form (poll-create)', () => {
   });
 });
 
+describe('nomination page (nominate)', () => {
+  const mine = [
+    { twitch_category_id: '10', name: 'Celeste', nominated_on: 1 },
+    { twitch_category_id: '20', name: 'Hades', nominated_on: 2 },
+  ];
+
+  // the page hands its config to the vendored accessible-autocomplete; the
+  // library is not under test: capture the config and drive it directly
+  type AutocompleteConfig = {
+    element: HTMLElement;
+    minLength: number;
+    source: (query: string, populate: (results: unknown[]) => void) => void;
+    templates: { inputValue: (r?: { name: string }) => string; suggestion: (r?: object) => string };
+    onConfirm: (r?: { id: string; name: string }) => void;
+  };
+  let config: AutocompleteConfig;
+
+  beforeEach(async () => {
+    const autocomplete = vi.fn((cfg: AutocompleteConfig) => {
+      config = cfg;
+      // the real library renders an input with the configured id; the page's
+      // own code attaches a listener to it, so the stub provides one too
+      const input = document.createElement('input');
+      input.id = 'game-search';
+      cfg.element.appendChild(input);
+    });
+    vi.stubGlobal('accessibleAutocomplete', autocomplete);
+    await renderPage('nominate', { ...base, eligible: true, eligible_msg: '', follow_rule: '', mine });
+    expect(autocomplete).toHaveBeenCalledTimes(1);
+    expect(config.element).toBe(document.getElementById('autocomplete-container'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('the source debounces rapid typing into one query and returns its results', async () => {
+    vi.useFakeTimers();
+    const result = { id: '31', name: 'Ōkami HD', box_art: 'http://art/31' };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [result] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const populate = vi.fn();
+    config.source('oka', populate);
+    config.source('okami', populate); // typed before the debounce fired
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/nominate/search?q=okami');
+    expect(populate).toHaveBeenCalledWith([result]);
+  });
+
+  it('short queries clear the suggestions without hitting the server', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const populate = vi.fn();
+    config.source('o', populate);
+    expect(populate).toHaveBeenCalledWith([]);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('a failed search degrades to no suggestions', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }));
+
+    const populate = vi.fn();
+    config.source('okami', populate);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(populate).toHaveBeenCalledWith([]);
+  });
+
+  it('clearing the input cancels a pending debounced search', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const populate = vi.fn();
+    config.source('okami', populate);
+    // everything is deleted before the debounce fires; the library will not
+    // call source for an empty box, so the page cancels on its own
+    const input = document.getElementById('game-search') as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await vi.advanceTimersByTimeAsync(300);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(populate).not.toHaveBeenCalled();
+  });
+
+  it('confirming a suggestion submits its id; blurring confirms nothing', () => {
+    const form = document.getElementById('nominate-form') as HTMLFormElement;
+    const submit = vi.fn();
+    form.submit = submit;
+
+    config.onConfirm({ id: '31', name: 'Ōkami HD' });
+    expect(formEntries(form)).toEqual([
+      ['csrf-token', 'csrf-token-value'],
+      ['category_id', '31'],
+    ]);
+    expect(submit).toHaveBeenCalledTimes(1);
+
+    // confirmOnBlur is off, but the library still calls onConfirm(undefined)
+    config.onConfirm(undefined);
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it('suggestion templates escape api-supplied text', () => {
+    expect(config.templates.inputValue({ name: 'Ōkami HD' })).toBe('Ōkami HD');
+    expect(config.templates.inputValue(undefined)).toBe('');
+
+    const html = config.templates.suggestion({ id: '1', name: '<b>sneaky</b>', box_art: 'http://a/"x"' });
+    expect(html).toContain('&lt;b&gt;sneaky&lt;/b&gt;');
+    expect(html).not.toContain('<b>');
+    expect(html).toContain('&quot;x&quot;');
+    // and no art, no img tag
+    expect(config.templates.suggestion({ id: '1', name: 'Plain' })).toBe('Plain');
+  });
+
+  it('lists your nominations, each with a withdraw form', () => {
+    const forms = Array.from(document.querySelectorAll<HTMLFormElement>('form[action="/nominate/remove"]'));
+    expect(forms).toHaveLength(2);
+    expect(formEntries(forms[0]!)).toEqual([
+      ['csrf-token', 'csrf-token-value'],
+      ['category_id', '10'],
+    ]);
+    expect(text(forms[0]!.closest('li')!.querySelector('span'))).toEqual('Celeste');
+    // the withdraw button uses the same circle-x icon as the create page
+    expect(forms[0]!.querySelector('button svg')).not.toBeNull();
+  });
+});
+
+describe('create form: fill from nominations', () => {
+  const optionInputs = () => Array.from(document.querySelectorAll<HTMLInputElement>('input[name="option[]"]'));
+  const fill = () => (document.getElementById('fill-nominations') as HTMLButtonElement).click();
+
+  beforeEach(async () => {
+    await renderPage('poll-create', base);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('pulls the top list into option rows, reusing empties and skipping duplicates', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ nominations: [{ name: 'Celeste' }, { name: 'Hades' }, { name: 'Okami' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    optionInputs()[0]!.value = 'Hades'; // typed by hand already
+    fill();
+    await vi.waitFor(() => expect(optionInputs()).toHaveLength(3));
+    expect(fetchMock).toHaveBeenCalledWith('/nominate/top?n=25');
+    expect(optionInputs().map(i => i.value)).toEqual(['Hades', 'Celeste', 'Okami']);
+
+    // filling twice adds nothing
+    fill();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(optionInputs().map(i => i.value)).toEqual(['Hades', 'Celeste', 'Okami']);
+  });
+
+  it('respects the count box', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ nominations: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    (document.getElementById('fill-count') as HTMLInputElement).value = '40';
+    fill();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/nominate/top?n=40'));
+  });
+});
+
 describe('poll actions (poll-title)', () => {
   const poll = { poll_id: 9, kind: 'irv', open: true, title: 'p', options: [] };
   const render = (ctx: object) => renderPage('poll-show', { ...base, remaining: '1 hour', ranks: [], poll, ...ctx });
@@ -293,6 +470,11 @@ describe('poll actions (poll-title)', () => {
     await render({ admin: false });
     expect(document.querySelector('form[action="/poll/9/close"]')).toBeNull();
     expect(document.getElementById('copy-link')).not.toBeNull();
+    // the navbar offers Nominate to everyone, Create only to admins, and the
+    // site name links home
+    expect(document.querySelector('nav a[href="/nominate"]')).not.toBeNull();
+    expect(document.querySelector('nav a[href="/create"]')).toBeNull();
+    expect(text(document.querySelector('nav a[href="/"]'))).toContain('Moist Polls');
 
     await render({ admin: true, poll: { ...poll, open: false }, remaining: null });
     expect(document.querySelector('form[action="/poll/9/close"]')).toBeNull();

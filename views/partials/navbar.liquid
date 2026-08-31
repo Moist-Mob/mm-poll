@@ -1,10 +1,21 @@
 {% comment %}
-  identity only: logo, site name, admin's Create link, and who's logged in.
-  Per-poll actions live in the poll-title partial instead.
+  identity only: logo, site name, site-wide links (admin's Create, everyone's
+  Nominate), and who's logged in. Per-poll actions live in the poll-title
+  partial instead.
 {% endcomment %}
 <div class="min-h-[3rem] flex flex-row flex-wrap items-center gap-x-4 gap-y-1 px-3 text-zinc-300 bg-zinc-800">
-  <img src="/img/dnkHappy.png" class="w-10 h-10 self-end shrink-0">
-  <h2 class="text-lg my-0 mr-2 sm:mr-6 whitespace-nowrap">Moist Polls</h2>
+  <a
+    href="/"
+    tabindex="9"
+    class="self-stretch flex flex-row items-center gap-x-4 mr-2 sm:mr-6 hover:text-zinc-100">
+    <img src="/img/dnkHappy.png" class="w-10 h-10 self-end shrink-0">
+    <h2 class="text-lg my-0 whitespace-nowrap">Moist Polls</h2>
+  </a>
+  {% comment %} Nominate first, so it sits in the same spot for everyone {% endcomment %}
+  <a
+    tabindex="9"
+    class="py-3 hover:text-zinc-100"
+    href="/nominate">Nominate</a>
   {% if admin %}
     <a
       tabindex="9"

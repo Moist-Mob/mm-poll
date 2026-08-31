@@ -17,9 +17,9 @@
   </div>
   {% if poll %}
     {% comment %}
-      Copy link always sits at the outer edge of the row — leftmost when the
+      Copy link always sits at the outer edge of the row: leftmost when the
       row is stacked/left-aligned (portrait), rightmost when it's on the right
-      (wider) — so it's in the same spot whether or not Close poll is present.
+      (wider), so it's in the same spot whether or not Close poll is present.
       DOM order is [Close, Copy]; row-reverse + justify-end flips it on portrait.
     {% endcomment %}
     <div class="flex flex-row-reverse justify-end sm:flex-row sm:justify-start flex-wrap items-center gap-2 shrink-0 sm:pt-1">

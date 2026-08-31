@@ -1,7 +1,26 @@
 {% layout "default" %}
 
 {% block content %}
-  <h1 class="mb-4">Create poll</h1>
+  <div class="flex flex-row flex-wrap items-center justify-between gap-2 mb-4">
+    <h1 class="my-0">Create poll</h1>
+    <div class="flex flex-row items-center gap-2">
+      <button
+        id="fill-nominations"
+        class="allow-blur font-bold py-1.5 px-4 rounded-lg text-zinc-800 bg-zinc-300 hover:bg-zinc-400 focus:outline-none focus:bg-zinc-400"
+        tabindex="2"
+        type="button">Fill from nominations</button>
+      <label class="flex items-center gap-1.5 text-sm text-zinc-300 whitespace-nowrap">top
+        <input
+          id="fill-count"
+          class="allow-blur w-16 shadow appearance-none border rounded-lg py-1.5 px-3 text-zinc-600 focus-within:text-zinc-900 leading-tight focus:outline-none"
+          type="number"
+          min="1"
+          max="100"
+          value="25"
+          tabindex="2">
+      </label>
+    </div>
+  </div>
 
   <form
     id="option-form"
@@ -15,36 +34,44 @@
       value="{{ localId | escape }}">
     <div class="flex flex-col gap-2 px-6 py-8 bg-sky-700 rounded-xl">
 
-      <div class="grid grid-cols-2 gap-2 mb-2">
-        <label class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors hover:bg-sky-900 has-[:focus-visible]:bg-sky-900 has-[:checked]:bg-sky-600 has-[:checked]:text-white">
-          <input
-            class="sr-only"
-            type="radio"
-            name="kind"
-            value="irv"
-            tabindex="1"
-            checked>
-          Ranked vote
-        </label>
-        <label class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors hover:bg-sky-900 has-[:focus-visible]:bg-sky-900 has-[:checked]:bg-sky-600 has-[:checked]:text-white">
-          <input
-            class="sr-only"
-            type="radio"
-            name="kind"
-            value="kano"
-            tabindex="1">
-          Kano poll
-        </label>
-      </div>
+      {% comment %}
+        poll-type picker and its per-type notes: kept wired up, but not
+        presented while there's only one type on offer. The `hidden` class on
+        the wrapper (not the attribute: preflight's [hidden] rule loses to
+        display utilities) hides it all; remove it to bring the picker back.
+      {% endcomment %}
+      <div class="hidden">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <label class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors hover:bg-sky-900 has-[:focus-visible]:bg-sky-900 has-[:checked]:bg-sky-600 has-[:checked]:text-white">
+            <input
+              class="sr-only"
+              type="radio"
+              name="kind"
+              value="irv"
+              tabindex="1"
+              checked>
+            Ranked vote
+          </label>
+          <label class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer select-none whitespace-nowrap text-zinc-100 bg-sky-800 transition-colors hover:bg-sky-900 has-[:focus-visible]:bg-sky-900 has-[:checked]:bg-sky-600 has-[:checked]:text-white">
+            <input
+              class="sr-only"
+              type="radio"
+              name="kind"
+              value="kano"
+              tabindex="1">
+            Kano poll
+          </label>
+        </div>
 
-      {% comment %} one of these is shown, matching the selected kind {% endcomment %}
-      <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="irv">
-        Viewers rank as many options as they like; one winner is chosen by instant-runoff elimination.
-      </p>
-      <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="kano" hidden>
-        Viewers say how they'd feel <b>with</b> and <b>without</b> each item, and the results show how the audience splits.
-        Name each item as a <b>thing</b>, not a change — "Pineapple on pizza", not "Adding pineapple to pizza" — so the answers mean the same whether you're thinking of adding or removing it.
-      </p>
+        {% comment %} one of these is shown, matching the selected kind {% endcomment %}
+        <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="irv">
+          Viewers rank as many options as they like; one winner is chosen by instant-runoff elimination.
+        </p>
+        <p class="kind-help my-0 mb-3 text-sm text-zinc-200" data-kind="kano" hidden>
+          Viewers say how they'd feel <b>with</b> and <b>without</b> each item, and the results show how the audience splits.
+          Name each item as a <b>thing</b>, not a change: "Pineapple on pizza", not "Adding pineapple to pizza". That way the answers mean the same whether you're thinking of adding or removing it.
+        </p>
+      </div>
 
       <input
         id="title"
@@ -174,6 +201,40 @@
         if (ev.target.value === '') return;
         if (focusEmpty()) return;
         newRow();
+      });
+
+      // pull the top nominations into option rows; empty rows are reused,
+      // names already present are skipped, so filling twice adds nothing
+      document.getElementById('fill-nominations').addEventListener('click', async ev => {
+        ev.preventDefault();
+        const n = Math.max(1, parseInt(document.getElementById('fill-count').value, 10) || 25);
+        let list;
+        try {
+          const res = await fetch('/nominate/top?n=' + n);
+          if (!res.ok) throw new Error(String(res.status));
+          list = (await res.json()).nominations;
+        } catch (e) {
+          alert('Could not load nominations');
+          return;
+        }
+        const have = new Set(
+          rows()
+            .map(row => inputOf(row).value.trim().toLowerCase())
+            .filter(v => v !== '')
+        );
+        for (const nom of list) {
+          const key = nom.name.trim().toLowerCase();
+          if (have.has(key)) continue;
+          have.add(key);
+          let row = rows().find(r => inputOf(r).value.trim() === '');
+          if (!row) {
+            row = rowTemplate.cloneNode(true);
+            inputOf(row).value = '';
+            options.appendChild(row);
+          }
+          inputOf(row).value = nom.name;
+        }
+        applyKind();
       });
 
       applyKind();

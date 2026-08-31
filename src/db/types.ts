@@ -39,10 +39,21 @@ export interface SessionTable {
   data: string;
 }
 
+// game nominations: one row per (viewer, twitch category); re-nominating
+// refreshes nominated_on (epoch ms) instead of adding weight
+export interface NominationTable {
+  nomination_id: Generated<number>;
+  twitch_category_id: string;
+  name: string;
+  twitch_user_id: string;
+  nominated_on: number;
+}
+
 export interface Database {
   poll: PollTable;
   option: OptionTable;
   vote: VoteTable;
   kano_vote: KanoVoteTable;
   session: SessionTable;
+  nomination: NominationTable;
 }

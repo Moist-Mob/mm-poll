@@ -8,7 +8,8 @@
     "watch:css": "pnpm run build:css -- --watch",
     "build:node": "tsc -p tsconfig.build.json",
     "watch:node": "tsx --watch src/index.ts",
-    "build": "npx vitest run && pnpm run build:css && pnpm run build:node"
+    "build": "node scripts/build.mjs",
+    "build:vendor": "node scripts/build.mjs --vendor-only"
   },
   "type": "module",
   "author": "",
@@ -36,6 +37,7 @@
     "@sinclair/typebox": "^0.33.24",
     "@twurple/api": "^7.4.0",
     "@twurple/auth": "^7.4.0",
+    "accessible-autocomplete": "^3.0.1",
     "better-sqlite3": "^12.11.1",
     "body-parser": "^2.3.0",
     "express": "^5.2.1",

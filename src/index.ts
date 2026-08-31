@@ -11,6 +11,8 @@ import { initTwurple } from './twurple.js';
 import { initPoll } from './poll.js';
 import { initDb } from './db.js';
 import { initApiRoutes } from './routers/api.js';
+import { initNominateRoutes } from './routers/nominate.js';
+import { initNominations } from './nomination.js';
 
 import Debug from 'debug';
 
@@ -32,12 +34,16 @@ import Debug from 'debug';
   const liquid = initLiquid({ config });
   const app = await initExpress({ config, liquid, secrets, kysely });
   const poll = initPoll({ kysely, config });
+  const nominations = initNominations({ kysely, config });
 
   const { mount: mountAuth, authRedirect } = await initAuthRoutes({ config, secrets, apiClient });
   mountAuth(app, '/auth');
 
   const { mount: mountApi } = initApiRoutes({ poll });
   mountApi(app, '/api');
+
+  const { mount: mountNominate } = initNominateRoutes({ nominations, authRedirect, apiClient, config });
+  mountNominate(app, '/nominate');
 
   const { mount: mountSite } = initSiteRoutes({ poll, authRedirect, config });
   mountSite(app, '/');

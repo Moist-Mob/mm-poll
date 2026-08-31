@@ -235,6 +235,7 @@ describe('migrations', () => {
     expect(await columns('poll')).toContain('kind');
     expect(await tables()).toContain('kano_vote');
     expect(await tables()).toContain('session');
+    expect(await tables()).toContain('nomination');
 
     // existing rows get the default kind
     await sql`insert into poll (title, created_on, closes_on) values ('old', 0, 0)`.execute(db);
@@ -245,6 +246,11 @@ describe('migrations', () => {
     ).rejects.toThrow();
 
     // migrateDown steps back one migration at a time
+    const downNomination = await migrator.migrateDown();
+    expect(downNomination.error).toBeUndefined();
+    expect(downNomination.results?.map(r => r.migrationName)).toEqual(['2026-08-31_003_nomination']);
+    expect(await tables()).not.toContain('nomination');
+
     const downSession = await migrator.migrateDown();
     expect(downSession.error).toBeUndefined();
     expect(downSession.results?.map(r => r.migrationName)).toEqual(['2026-08-31_002_session']);

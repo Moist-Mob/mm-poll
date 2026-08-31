@@ -273,7 +273,7 @@ describe('kano', () => {
       expect(f.intervals.want).toEqual(wilson(1, 4));
       expect(f.small_sample).toBe(true);
       expect(f.split_close).toBe(true);
-      expect(f.verdict.detail).toMatch(/Only 4 responses — too few to draw conclusions/);
+      expect(f.verdict.detail).toMatch(/Only 4 responses: too few to draw conclusions/);
       expect(f.verdict.detail).toMatch(/anywhere from 5%–70%/);
     });
 

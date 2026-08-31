@@ -1,0 +1,149 @@
+{% layout "default" %}
+
+{% block head %}
+    {% comment %} styled by our own stylesheet (see src/tailwind/style.css),
+      not the library's bundled css {% endcomment %}
+    <script src="/vendor/accessible-autocomplete.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Nominate a game</h1>
+
+  {% if eligible %}
+    <p>Suggest a game for the next variety-game vote. Search and pick from the list. Nominating something again later refreshes it, and only recent-ish nominations count when the poll is drawn up.</p>
+
+    <label for="game-search" class="sr-only">Search for a game</label>
+    {% comment %} accessible-autocomplete renders into this; since we don't
+      control its markup, it's styled in style.css under this id {% endcomment %}
+    <div id="autocomplete-container"></div>
+
+    {% comment %} confirming a suggestion fills category_id and submits this {% endcomment %}
+    <form
+      id="nominate-form"
+      method="post"
+      action="/nominate"
+      hidden>
+      <input
+        type="hidden"
+        name="csrf-token"
+        value="{{ localId | escape }}">
+      <input
+        type="hidden"
+        name="category_id"
+        value="">
+    </form>
+
+    {% if mine.size > 0 %}
+      <div class="flex flex-col gap-1 px-4 py-4 mt-6 bg-sky-700 rounded-xl">
+        <h2 class="my-0 mb-2 px-2 text-lg text-zinc-100">Your nominations</h2>
+        <ul class="list-none p-0 my-0 flex flex-col gap-1">
+        {% for nom in mine %}
+          {% comment %} the row hover ties the far-right (x) to its title {% endcomment %}
+          <li class="flex flex-row items-center gap-2 my-0 px-2 py-1 rounded-md hover:bg-zinc-100/10">
+            <span class="grow">{{ nom.name | escape }}</span>
+            <form method="post" action="/nominate/remove" class="my-0 flex">
+              <input
+                type="hidden"
+                name="csrf-token"
+                value="{{ localId | escape }}">
+              <input
+                type="hidden"
+                name="category_id"
+                value="{{ nom.twitch_category_id | escape }}">
+              <button
+                type="submit"
+                class="flex items-center justify-center w-6 h-6 hover:text-orange-400 focus:outline-none focus:text-orange-400"
+                aria-label="Withdraw {{ nom.name | escape }}">
+<!-- esthetic-ignore-next -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6 pointer-events-none">
+                  <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm-1.72 6.97a.75.75 0 1 0-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06L12 13.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L13.06 12l1.72-1.72a.75.75 0 1 0-1.06-1.06L12 10.94l-1.72-1.72Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <script type="text/javascript">
+      {% raw %}
+      (function () {
+        'use strict';
+
+        const form = document.getElementById('nominate-form');
+
+        // suggestion templates return html strings, so anything from the
+        // api gets escaped before it goes in
+        const esc = s =>
+          String(s).replace(
+            /[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+          );
+
+        let timer = null;
+        let seq = 0;
+        // called by the library on every keystroke: debounce the api calls
+        // and drop replies that a newer query has superseded
+        const source = (query, populateResults) => {
+          clearTimeout(timer);
+          const q = query.trim();
+          if (q.length < 2) {
+            populateResults([]);
+            return;
+          }
+          timer = setTimeout(async () => {
+            const mySeq = ++seq;
+            try {
+              const res = await fetch('/nominate/search?q=' + encodeURIComponent(q));
+              if (!res.ok) throw new Error(String(res.status));
+              const data = await res.json();
+              if (mySeq === seq) populateResults(data.results);
+            } catch (e) {
+              if (mySeq === seq) populateResults([]);
+            }
+          }, 250);
+        };
+
+        window.accessibleAutocomplete({
+          element: document.getElementById('autocomplete-container'),
+          id: 'game-search',
+          placeholder: 'Search for a game...',
+          minLength: 2,
+          autoselect: false,
+          confirmOnBlur: false,
+          source,
+          templates: {
+            inputValue: r => (r ? r.name : ''),
+            suggestion: r =>
+              r
+                ? (r.box_art
+                    ? '<img src="' + esc(r.box_art) + '" alt="" class="inline-block w-6 h-8 mr-2 rounded object-cover align-middle">'
+                    : '') + esc(r.name)
+                : '',
+          },
+          tNoResults: () => 'No matches. Check the spelling?',
+          onConfirm: r => {
+            if (!r) return;
+            form.querySelector('input[name="category_id"]').value = r.id;
+            form.submit();
+          },
+        });
+
+        // the library never calls source below minLength, so clearing the box
+        // leaves an earlier debounced search pending (and any reply in flight
+        // would still render). Watch the input directly and cancel both.
+        document.getElementById('game-search').addEventListener('input', ev => {
+          if (ev.target.value.trim().length < 2) {
+            clearTimeout(timer);
+            seq += 1;
+          }
+        });
+      })();
+      {% endraw %}
+    </script>
+  {% else %}
+    <p>{{ eligible_msg | escape }}</p>
+    <p>{{ follow_rule | escape }}</p>
+  {% endif %}
+{% endblock %}

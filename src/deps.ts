@@ -6,6 +6,7 @@ import { type Config } from './config.js';
 import { type SecretsFileSource } from './config/secrets.js';
 import { type Database } from './db/types.js';
 import { type PollFns } from './poll.js';
+import { type NominationFns } from './nomination.js';
 
 export type ExpressContext = {
   settings: any;
@@ -25,6 +26,7 @@ export type Deps = {
   apiClient: ApiClient;
   kysely: Kysely<Database>;
   poll: PollFns;
+  nominations: NominationFns;
   authRedirect: RequestHandler;
 };
 export type PDeps<Ks extends keyof Deps> = Pick<Deps, Ks>;

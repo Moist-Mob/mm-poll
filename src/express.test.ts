@@ -106,7 +106,7 @@ describe('express sessions (sqlite-backed)', () => {
   it('sessions survive a server restart (rows live in sqlite)', async () => {
     const cookie = await loginCookie();
 
-    // same database, fresh express instance — as after a deploy
+    // same database, fresh express instance, as after a deploy
     const restarted = await start();
     try {
       const res = await fetch(`${restarted.base}/whoami`, { headers: { cookie } });
