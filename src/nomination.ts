@@ -13,6 +13,18 @@ export const NOMINATION_HALF_LIFE_DAYS = 60;
 // beyond ~4 half-lives (6%) a nomination is noise; the rows get deleted
 export const NOMINATION_MAX_AGE_DAYS = 4 * NOMINATION_HALF_LIFE_DAYS;
 
+// the traffic-light dot on a viewer's own list: how much weight a nomination
+// still carries, in half-lives. Fresh under one (> 50% weight), aging under
+// two (> 25%), stale beyond that until the prune at four. There's no bump
+// button on purpose (it would just get mashed); re-nominating refreshes.
+export type Freshness = 'fresh' | 'aging' | 'stale';
+export const freshness = (nominated_on: number, now: number = Date.now()): Freshness => {
+  const halfLives = (now - nominated_on) / (NOMINATION_HALF_LIFE_DAYS * DAY_MS);
+  if (halfLives < 1) return 'fresh';
+  if (halfLives < 2) return 'aging';
+  return 'stale';
+};
+
 export type ScoredNomination = {
   twitch_category_id: string;
   name: string;
@@ -24,7 +36,9 @@ export type ScoredNomination = {
 export interface NominationFns {
   nominate(user: TwitchUser, category: { id: string; name: string }): Promise<void>;
   remove(user: TwitchUser, twitch_category_id: string): Promise<void>;
-  mine(user_id: string): Promise<{ twitch_category_id: string; name: string; nominated_on: number }[]>;
+  mine(
+    user_id: string
+  ): Promise<{ twitch_category_id: string; name: string; nominated_on: number; freshness: Freshness }[]>;
   top(n: number): Promise<ScoredNomination[]>;
 }
 
@@ -62,13 +76,15 @@ export const initNominations = ({ kysely, config }: PDeps<'kysely' | 'config'>):
     },
 
     async mine(user_id) {
-      return kysely
+      const rows = await kysely
         .selectFrom('nomination')
         .select(['twitch_category_id', 'name', 'nominated_on'])
         .where('twitch_user_id', '=', user_id)
         .orderBy('nominated_on', 'desc')
         .orderBy('nomination_id', 'desc')
         .execute();
+      const now = Date.now();
+      return rows.map(row => ({ ...row, freshness: freshness(row.nominated_on, now) }));
     },
 
     async top(n) {

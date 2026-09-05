@@ -3,6 +3,7 @@ import { type Kysely } from 'kysely';
 import { initDb } from './db.js';
 import { testMigrationProvider } from './testing/migrations.js';
 import {
+  freshness,
   initNominations,
   NOMINATION_HALF_LIFE_DAYS,
   NOMINATION_MAX_AGE_DAYS,
@@ -117,6 +118,27 @@ describe('nominations (in-memory db)', () => {
     expect((await nominations.mine('1')).map(m => m.name)).toEqual(['B']);
     // the other viewer's nomination of the same game is untouched
     expect((await nominations.top(10)).find(t => t.twitch_category_id === '1')?.count).toBe(1);
+  });
+
+  it('grades each of a viewer\'s nominations by remaining weight', async () => {
+    await nominations.nominate(user('1'), { id: '1', name: 'Fresh' });
+    await nominations.nominate(user('1'), { id: '2', name: 'Aging' });
+    await backdate('2', NOMINATION_HALF_LIFE_DAYS + 1);
+    await nominations.nominate(user('1'), { id: '3', name: 'Stale' });
+    await backdate('3', 2 * NOMINATION_HALF_LIFE_DAYS + 1);
+
+    const mine = await nominations.mine('1');
+    expect(mine.map(m => [m.name, m.freshness])).toEqual([
+      ['Fresh', 'fresh'],
+      ['Aging', 'aging'],
+      ['Stale', 'stale'],
+    ]);
+
+    // the tier boundaries sit on whole half-lives
+    const halfLife = NOMINATION_HALF_LIFE_DAYS * DAY_MS;
+    expect(freshness(1000 - halfLife + 1, 1000)).toBe('fresh');
+    expect(freshness(1000 - halfLife, 1000)).toBe('aging');
+    expect(freshness(1000 - 2 * halfLife, 1000)).toBe('stale');
   });
 
   it('ineligible viewers cannot nominate', async () => {

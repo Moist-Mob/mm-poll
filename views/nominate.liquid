@@ -10,12 +10,15 @@
   <h1 class="mb-4">Nominate a game</h1>
 
   {% if eligible %}
-    <p>Suggest a game for the next variety-game vote. Search and pick from the list. Nominating something again later refreshes it, and only recent-ish nominations count when the poll is drawn up.</p>
+    <p>Suggest a game for the next variety-game vote. Search and pick from the list. Nominations fade as they age: an old one still counts, just for less. Nominating a game again refreshes it to full strength.</p>
+
+    <p>You can see <a href="https://twitchtracker.com/dunkorslam/games">previous games played on stream here</a></p>
 
     <label for="game-search" class="sr-only">Search for a game</label>
     {% comment %} accessible-autocomplete renders into this; since we don't
-      control its markup, it's styled in style.css under this id {% endcomment %}
-    <div id="autocomplete-container"></div>
+      control its markup, it's styled in style.css under this id. not-prose
+      keeps the typography plugin's element margins out of the dropdown {% endcomment %}
+    <div id="autocomplete-container" class="not-prose"></div>
 
     {% comment %} confirming a suggestion fills category_id and submits this {% endcomment %}
     <form
@@ -40,6 +43,18 @@
         {% for nom in mine %}
           {% comment %} the row hover ties the far-right (x) to its title {% endcomment %}
           <li class="flex flex-row items-center gap-2 my-0 px-2 py-1 rounded-md hover:bg-zinc-100/10">
+            {% comment %} traffic light: how much weight this still carries.
+              Full class names spelled out so the tailwind scan sees them {% endcomment %}
+            {% if nom.freshness == 'fresh' %}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-green-400" title="Fresh"></span>
+              <span class="sr-only">Fresh.</span>
+            {% elsif nom.freshness == 'aging' %}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-yellow-400" title="Fading; nominating it again refreshes it"></span>
+              <span class="sr-only">Fading; nominating it again refreshes it.</span>
+            {% else %}
+              <span class="w-2.5 h-2.5 shrink-0 rounded-full bg-red-400" title="Nearly expired; nominating it again refreshes it"></span>
+              <span class="sr-only">Nearly expired; nominating it again refreshes it.</span>
+            {% endif %}
             <span class="grow">{{ nom.name | escape }}</span>
             <form method="post" action="/nominate/remove" class="my-0 flex">
               <input
@@ -115,11 +130,15 @@
           source,
           templates: {
             inputValue: r => (r ? r.name : ''),
+            // a flex row, not inline flow: a long name wraps within its own
+            // column beside the art instead of sliding underneath it
             suggestion: r =>
               r
-                ? (r.box_art
-                    ? '<img src="' + esc(r.box_art) + '" alt="" class="inline-block w-6 h-8 mr-2 rounded object-cover align-middle">'
-                    : '') + esc(r.name)
+                ? '<div class="flex flex-row items-center gap-2">' +
+                  (r.box_art
+                    ? '<img src="' + esc(r.box_art) + '" alt="" class="w-9 h-12 shrink-0 rounded object-cover">'
+                    : '') +
+                  '<span>' + esc(r.name) + '</span></div>'
                 : '',
           },
           tNoResults: () => 'No matches. Check the spelling?',

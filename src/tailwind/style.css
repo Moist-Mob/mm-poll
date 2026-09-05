@@ -62,6 +62,10 @@
 #autocomplete-container .autocomplete__menu {
   margin: 0;
   padding: theme(spacing.1);
+  /* breathing room between options, matching the nominations list's gap-1
+     (the menu is laid out as a flex column when visible, below) */
+  flex-direction: column;
+  gap: theme(spacing.1);
   width: 100%;
   max-height: 20rem;
   overflow-x: hidden;
@@ -81,7 +85,7 @@
 }
 
 #autocomplete-container .autocomplete__menu--visible {
-  display: block;
+  display: flex;
 }
 
 #autocomplete-container .autocomplete__menu--hidden {
@@ -92,7 +96,7 @@
   display: block;
   position: relative;
   margin: 0;
-  padding: theme(spacing.1) theme(spacing.3);
+  padding: theme(spacing.3);
   list-style: none;
   cursor: pointer;
   border-radius: theme(borderRadius.md);

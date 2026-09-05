@@ -280,8 +280,8 @@ describe('create form (poll-create)', () => {
 
 describe('nomination page (nominate)', () => {
   const mine = [
-    { twitch_category_id: '10', name: 'Celeste', nominated_on: 1 },
-    { twitch_category_id: '20', name: 'Hades', nominated_on: 2 },
+    { twitch_category_id: '10', name: 'Celeste', nominated_on: 1, freshness: 'fresh' },
+    { twitch_category_id: '20', name: 'Hades', nominated_on: 2, freshness: 'stale' },
   ];
 
   // the page hands its config to the vendored accessible-autocomplete; the
@@ -397,7 +397,7 @@ describe('nomination page (nominate)', () => {
     expect(html).not.toContain('<b>');
     expect(html).toContain('&quot;x&quot;');
     // and no art, no img tag
-    expect(config.templates.suggestion({ id: '1', name: 'Plain' })).toBe('Plain');
+    expect(config.templates.suggestion({ id: '1', name: 'Plain' })).not.toContain('<img');
   });
 
   it('lists your nominations, each with a withdraw form', () => {
@@ -407,7 +407,7 @@ describe('nomination page (nominate)', () => {
       ['csrf-token', 'csrf-token-value'],
       ['category_id', '10'],
     ]);
-    expect(text(forms[0]!.closest('li')!.querySelector('span'))).toEqual('Celeste');
+    expect(text(forms[0]!.closest('li')!.querySelector('span.grow'))).toEqual('Celeste');
     // the withdraw button uses the same circle-x icon as the create page
     expect(forms[0]!.querySelector('button svg')).not.toBeNull();
   });

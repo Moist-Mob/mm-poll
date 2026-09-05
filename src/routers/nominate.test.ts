@@ -22,8 +22,25 @@ const secrets = {
   }),
 } as unknown as SecretsFileSource;
 
-// a tiny stand-in for twitch's game catalog
-const catalog: Record<string, string> = { '10': 'Celeste', '20': 'Ōkami HD' };
+// a tiny stand-in for twitch's game catalog. The deadlock block mirrors the
+// real bug: eleven fuzzy matches ahead of the exact one, so an unranked
+// slice(0, 10) would drop it
+const catalog: Record<string, string> = {
+  '10': 'Celeste',
+  '20': 'Ōkami HD',
+  '30': 'Deadlock: Planetary Conquest',
+  '31': 'Deadlock II: Shrine Wars',
+  '32': 'BATTLESTAR GALACTICA Deadlock',
+  '33': 'Deadlock: Online',
+  '34': 'Deadlocked',
+  '35': 'Ratchet: Deadlocked',
+  '36': 'Deadlock Station',
+  '37': 'DEADLOCK (2016)',
+  '38': 'Gravely Silent: House of Deadlock',
+  '39': 'DeadLock (2021)',
+  '40': 'Deadlocked Again',
+  '41': 'Deadlock',
+};
 const apiClient = {
   search: {
     searchCategories: async (q: string) => ({
@@ -120,6 +137,20 @@ describe('nominate routes', () => {
 
     const short = await fetch(`${base}/nominate/search?q=c`, { headers: { cookie } });
     expect(await short.json()).toEqual({ results: [] });
+  });
+
+  it('surfaces the exact name match ahead of twitch\'s fuzzy ordering', async () => {
+    const { cookie } = await login('viewer');
+    const res = await fetch(`${base}/nominate/search?q=deadlock`, { headers: { cookie } });
+    const { results } = (await res.json()) as { results: { id: string; name: string }[] };
+
+    // all 12 deadlock-ish catalog entries fit in the top 20
+    expect(results).toHaveLength(12);
+    // the exact match arrived last from the catalog but is shown first
+    expect(results[0]).toMatchObject({ id: '41', name: 'Deadlock' });
+    // prefix matches beat mid-name matches; twitch's order holds within a tier
+    const names = results.map(r => r.name);
+    expect(names.indexOf('Deadlock: Planetary Conquest')).toBeLessThan(names.indexOf('BATTLESTAR GALACTICA Deadlock'));
   });
 
   it('a nomination stores the server-resolved name, ignoring any client text', async () => {

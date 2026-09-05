@@ -9,6 +9,22 @@ export interface NominateFns {
   mount(app: Application, path: string): void;
 }
 
+// twitch's category search is fuzzy and doesn't put exact name matches first:
+// "deadlock" returns Valve's Deadlock at position 21 of 22, behind the likes
+// of "Dead Oculus". Order exact, then prefix, then substring matches ahead of
+// the rest; sort stability keeps twitch's order within each tier.
+export const rankCategories = <T extends { name: string }>(q: string, rows: T[]): T[] => {
+  const query = q.toLowerCase();
+  const tier = (name: string): number => {
+    const n = name.toLowerCase();
+    if (n === query) return 0;
+    if (n.startsWith(query)) return 1;
+    if (n.includes(query)) return 2;
+    return 3;
+  };
+  return rows.slice().sort((a, b) => tier(a.name) - tier(b.name));
+};
+
 export const initNominateRoutes = ({
   nominations,
   authRedirect,
@@ -45,9 +61,12 @@ export const initNominateRoutes = ({
       return;
     }
     try {
-      const found = await apiClient.search.searchCategories(q);
+      // fetch well past what we show: the wanted game is often buried deep
+      const found = await apiClient.search.searchCategories(q, { limit: 100 });
       res.json({
-        results: found.data.slice(0, 10).map(g => ({ id: g.id, name: g.name, box_art: g.boxArtUrl })),
+        results: rankCategories(q, found.data)
+          .slice(0, 20)
+          .map(g => ({ id: g.id, name: g.name, box_art: g.boxArtUrl })),
       });
     } catch (e) {
       console.error('category search failed', e);
